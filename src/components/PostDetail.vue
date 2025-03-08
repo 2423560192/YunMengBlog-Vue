@@ -1,82 +1,86 @@
 <template>
   <Home>
-    <div class="post-detail">
-      <div v-if="loading" class="loading-container">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">加载中...</span>
+    <div class="post-detail-container">
+      <!-- 文章内容 -->
+      <div class="post-content">
+        <h1 class="post-title">{{ post.title }}</h1>
+
+        <div class="post-meta">
+          <div class="author-info">
+            <img :src="post.author && post.author.avatar || require('@/assets/images/default-avatar.png')" :alt="post.author && post.author.username" class="author-avatar">
+            <span class="author-name">{{ post.author && post.author.username }}</span>
+          </div>
+          <div class="post-info">
+            <span class="post-date">{{ formatDate(post.created_at) }}</span>
+            <span class="post-category">{{ post.category }}</span>
+          </div>
+        </div>
+
+        <div class="post-tags">
+          <span v-for="tag in post.tags"
+                :key="tag"
+                class="tag">
+            {{ tag }}
+          </span>
+        </div>
+
+        <div class="post-body" v-html="post.content"></div>
+
+        <div class="post-actions">
+          <button class="btn-action" @click="handleLike">
+            <i class="fas" :class="{ 'fa-heart text-danger': isLiked, 'fa-heart': !isLiked }"></i>
+            点赞
+          </button>
+          <button class="btn-action" @click="handleCollect">
+            <i class="fas" :class="{ 'fa-star text-warning': isCollected, 'fa-star': !isCollected }"></i>
+            收藏
+          </button>
         </div>
       </div>
 
-      <div v-else-if="error" class="alert alert-danger">
-        {{ error }}
-      </div>
+      <!-- 评论区 -->
+      <div class="comments-section">
+        <h3 class="comments-title">评论 ({{ comments.length }})</h3>
 
-      <div v-else class="article-container" ref="articleContainer">
-        <!-- 博主信息卡片 -->
-        <div class="author-card">
-          <div class="author-avatar">
-            <img src="https://via.placeholder.com/150" alt="博主头像">
-          </div>
-          <h3 class="author-name">云梦</h3>
-          <p class="author-bio">热爱技术，热爱生活。前端开发工程师，专注于Vue.js和React技术栈。</p>
-          <div class="author-stats">
-            <div class="stat-item">
-              <i class="fas fa-pencil-alt"></i>
-              <span>文章 23</span>
-            </div>
-            <div class="stat-item">
-              <i class="fas fa-heart"></i>
-              <span>获赞 1.2k</span>
-            </div>
-          </div>
+        <!-- 评论输入框 -->
+        <div class="comment-form" v-if="isLoggedIn">
+          <textarea
+            v-model="newComment"
+            class="form-control"
+            rows="3"
+            placeholder="写下你的评论..."
+          ></textarea>
+          <button
+            class="btn btn-primary mt-2"
+            @click="submitComment"
+            :disabled="!newComment.trim() || commentLoading"
+          >
+            {{ commentLoading ? '发送中...' : '发表评论' }}
+          </button>
+        </div>
+        <div v-else class="text-center my-3">
+          <router-link to="/login" class="btn btn-outline-primary">登录后评论</router-link>
         </div>
 
-        <article class="article">
-          <header class="article-header">
-            <h1 class="article-title" ref="title"></h1>
-            <div class="article-meta">
-              <span class="article-date">
-                <i class="fas fa-calendar-alt"></i>
-                {{ formatDate(post.created_at) }}
-              </span>
-              <span class="article-author">
-                <i class="fas fa-user"></i>
-                {{ post.author }}
-              </span>
-              <span class="article-likes">
-                <i class="fas fa-heart"></i>
-                {{ post.likes }}
-              </span>
+        <!-- 评论列表 -->
+        <div class="comments-list">
+          <div v-for="comment in comments"
+               :key="comment.id"
+               class="comment-item">
+            <div class="comment-header">
+              <img :src="comment.user.avatar" :alt="comment.user.username" class="comment-avatar">
+              <div class="comment-info">
+                <span class="comment-author">{{ comment.user.username }}</span>
+                <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+              </div>
             </div>
-          </header>
-
-          <div class="article-content" ref="content" :class="{ 'fade-in': !loading }">
-            {{ post.content }}
+            <div class="comment-content">{{ comment.content }}</div>
+            <div class="comment-actions" v-if="isLoggedIn && comment.user.id === currentUserId">
+              <button class="btn-delete" @click="deleteComment(comment.id)">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
           </div>
-        </article>
-
-        <button class="toc-btn" @click="toggleToc">
-          <i class="fas fa-list"></i>
-        </button>
-
-        <div class="toc-panel" :class="{ show: showToc }">
-          <h4>目录</h4>
-          <ul>
-            <li v-for="(item, index) in tableOfContents"
-                :key="index"
-                :style="{ paddingLeft: (item.level - 1) * 20 + 'px' }">
-              {{ item.title }}
-            </li>
-          </ul>
-        </div>
-
-        <button class="back-to-top" @click="scrollToTop">
-          <i class="fas fa-arrow-up"></i>
-        </button>
-
-        <div class="comments-section">
-          <h3 class="comments-title">评论</h3>
-          <p class="text-muted">评论功能即将推出...</p>
         </div>
       </div>
     </div>
@@ -85,6 +89,7 @@
 
 <script>
 import Home from './Home.vue'
+import { postApi, commentApi, likeApi, collectApi } from '../api'
 
 export default {
   name: 'PostDetail',
@@ -93,46 +98,25 @@ export default {
   },
   data () {
     return {
-      post: {
-        id: 1,
-        title: '探索 Vue.js 3.0 新特性',
-        content: `Vue.js 3.0 带来了许多令人兴奋的新特性。
-
-Composition API 让代码组织更加灵活，通过 setup 函数，我们可以更好地复用逻辑代码，使组件的代码更加清晰和易于维护。
-
-Teleport 组件解决了弹窗类组件的挂载问题，让我们可以将组件渲染到任意 DOM 节点，而不受组件层级的限制。
-
-Fragment 支持让模板结构更加简洁，不再需要额外的包裹元素。同时，Vue 3.0 在性能方面也有显著提升，包括：
-
-- 更小的打包体积
-- 更快的渲染速度
-- 更好的 TypeScript 支持
-- 改进的响应式系统
-
-这些改进让 Vue.js 在大型应用开发中的表现更加出色。`,
-        created_at: '2024-03-07',
-        author: '张三',
-        likes: 42,
-        comments: []
-      },
+      post: {},
+      comments: [],
+      newComment: '',
+      isLiked: false,
+      isCollected: false,
       loading: false,
-      error: null,
-      showToc: false
+      commentLoading: false
     }
   },
   computed: {
-    // 生成目录
-    tableOfContents () {
-      const lines = this.post.content.split('\n')
-      const toc = []
-      lines.forEach(line => {
-        if (line.startsWith('#')) {
-          const level = line.match(/^#+/)[0].length
-          const title = line.replace(/^#+\s+/, '')
-          toc.push({ level, title })
-        }
-      })
-      return toc
+    postId () {
+      return parseInt(this.$route.params.id)
+    },
+    isLoggedIn () {
+      return !!localStorage.getItem('token')
+    },
+    currentUserId () {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      return user.id
     }
   },
   methods: {
@@ -140,294 +124,266 @@ Fragment 支持让模板结构更加简洁，不再需要额外的包裹元素�
       return new Date(date).toLocaleDateString('zh-CN', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       })
     },
     async fetchPost () {
-      this.loading = true
-      this.error = null
-
       try {
-        const response = await this.$axios.get(`/api/posts/${this.$route.params.id}/`)
-        if (response.data.status === 'success') {
-          this.post = response.data.data
-        } else {
-          this.error = response.data.message
-        }
+        this.loading = true
+        this.post = await postApi.getDetail(this.postId)
       } catch (error) {
-        console.warn('API 请求失败，使用静态数据')
-        // 保持静态数据，不设置 error
+        console.error('获取文章详情失败:', error)
       } finally {
         this.loading = false
       }
     },
-    toggleToc () {
-      this.showToc = !this.showToc
+    async fetchComments () {
+      try {
+        const data = await commentApi.getList(this.postId)
+        this.comments = data
+      } catch (error) {
+        console.error('获取评论失败:', error)
+      }
     },
-    scrollToTop () {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      })
-    },
-    async typewriterEffect () {
-      const title = this.$refs.title
-      const originalText = this.post.title
-      title.textContent = ''
+    async submitComment () {
+      if (!this.newComment.trim()) return
 
-      for (const char of originalText) {
-        await new Promise(resolve => setTimeout(resolve, 50))
-        title.textContent += char
+      try {
+        this.commentLoading = true
+        await commentApi.create({
+          postId: this.postId,
+          content: this.newComment
+        })
+        this.newComment = ''
+        await this.fetchComments()
+      } catch (error) {
+        console.error('发表评论失败:', error)
+      } finally {
+        this.commentLoading = false
+      }
+    },
+    async deleteComment (commentId) {
+      if (!confirm('确定要删除这条评论吗？')) return
+
+      try {
+        await commentApi.delete(commentId)
+        await this.fetchComments()
+      } catch (error) {
+        console.error('删除评论失败:', error)
+      }
+    },
+    async handleLike () {
+      if (!this.isLoggedIn) {
+        this.$router.push('/login')
+        return
+      }
+
+      try {
+        if (this.isLiked) {
+          await likeApi.unlike(this.postId)
+        } else {
+          await likeApi.like(this.postId)
+        }
+        this.isLiked = !this.isLiked
+      } catch (error) {
+        console.error('操作失败:', error)
+      }
+    },
+    async handleCollect () {
+      if (!this.isLoggedIn) {
+        this.$router.push('/login')
+        return
+      }
+
+      try {
+        if (this.isCollected) {
+          await collectApi.uncollect(this.postId)
+        } else {
+          await collectApi.collect(this.postId)
+        }
+        this.isCollected = !this.isCollected
+      } catch (error) {
+        console.error('操作失败:', error)
       }
     }
   },
-  async mounted () {
-    await this.fetchPost()
-    if (!this.error && !this.loading) {
-      this.typewriterEffect()
-    }
-
-    // 添加滚动监听
-    window.addEventListener('scroll', () => {
-      const backToTop = document.querySelector('.back-to-top')
-      if (backToTop) {
-        if (window.scrollY > 300) {
-          backToTop.classList.add('show')
-        } else {
-          backToTop.classList.remove('show')
-        }
-      }
-    })
+  created () {
+    this.fetchPost()
+    this.fetchComments()
   }
 }
 </script>
 
 <style scoped>
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 300px;
-}
-
-.article-container {
+.post-detail-container {
   max-width: 800px;
   margin: 0 auto;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  padding: 3rem;
-  opacity: 0;
-  animation: fadeIn 1s ease forwards;
+  padding: 2rem;
 }
 
-.author-card {
-  background: linear-gradient(135deg, #74ebd5 0%, #acb6e5 100%);
+.post-content {
+  background: white;
   border-radius: 15px;
   padding: 2rem;
-  text-align: center;
-  color: white;
-  margin-bottom: 3rem;
-  transform: translateY(0);
-  transition: all 0.3s ease;
-}
-
-.author-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: 0 15px 30px rgba(0,0,0,0.15);
-}
-
-.author-avatar {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 1.5rem;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 4px solid rgba(255,255,255,0.8);
+  margin-bottom: 2rem;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
-.author-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.author-name {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-.author-bio {
-  font-size: 0.95rem;
-  opacity: 0.9;
+.post-title {
+  font-size: 2rem;
+  color: #2c3e50;
   margin-bottom: 1.5rem;
 }
 
-.author-stats {
+.post-meta {
   display: flex;
-  justify-content: center;
-  gap: 2rem;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
 }
 
-.stat-item {
+.author-info {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.3s ease;
 }
 
-.stat-item:hover {
-  transform: translateY(-2px);
-  color: #3273dc;
-}
-
-.article-header {
-  text-align: center;
-  margin-bottom: 3rem;
-}
-
-.article-title {
-  font-size: 2.5rem;
-  color: #2c3e50;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  line-height: 1.3;
-  display: inline-block;
-  border-right: 3px solid #3273dc;
-  padding-right: 8px;
-  animation: blink 0.7s step-end infinite;
-}
-
-.article-meta {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  color: #666;
-  font-size: 0.95rem;
-}
-
-.article-meta i {
-  margin-right: 0.5rem;
-}
-
-.article-meta span {
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.article-meta span:hover {
-  color: #3273dc;
-  transform: translateY(-2px);
-}
-
-.article-content {
-  font-size: 1.1rem;
-  line-height: 1.8;
-  color: #2c3e50;
-  white-space: pre-wrap;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.8s ease;
-}
-
-.article-content.fade-in {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.comments-section {
-  margin-top: 4rem;
-  padding-top: 2rem;
-  border-top: 1px solid #eee;
-}
-
-.comments-title {
-  font-size: 1.5rem;
-  color: #2c3e50;
-  margin-bottom: 1rem;
-}
-
-.toc-btn {
-  position: fixed;
-  right: 2rem;
-  top: 6rem;
-  background: white;
-  border: none;
-  padding: 0.5rem;
-  border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.toc-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.toc-panel {
-  position: fixed;
-  right: 2rem;
-  top: 8rem;
-  background: white;
-  padding: 1rem;
-  border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  max-width: 300px;
-  max-height: 70vh;
-  overflow-y: auto;
-  transform: translateX(100%);
-  opacity: 0;
-  transition: all 0.3s ease;
-}
-
-.toc-panel.show {
-  transform: translateX(0);
-  opacity: 1;
-}
-
-.back-to-top {
-  position: fixed;
-  right: 2rem;
-  bottom: 2rem;
-  background: white;
-  border: none;
+.author-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.post-info {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.post-tags {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.tag {
+  background: #f0f0f0;
+  padding: 0.2rem 0.8rem;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.post-body {
+  line-height: 1.8;
+  color: #2c3e50;
+}
+
+.post-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.btn-action {
+  background: none;
+  border: none;
+  color: #666;
   cursor: pointer;
-  opacity: 0;
-  transform: translateY(20px);
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.back-to-top.show {
+.btn-action:hover {
+  color: #3273dc;
+}
+
+.comments-section {
+  background: white;
+  border-radius: 15px;
+  padding: 2rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.comments-title {
+  margin-bottom: 1.5rem;
+  color: #2c3e50;
+}
+
+.comment-item {
+  padding: 1rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.comment-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-author {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.comment-date {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.comment-content {
+  color: #2c3e50;
+  line-height: 1.6;
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.btn-delete:hover {
   opacity: 1;
-  transform: translateY(0);
 }
 
-.back-to-top:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-@keyframes blink {
-  from, to { border-color: transparent }
-  50% { border-color: #3273dc }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
+@media (max-width: 768px) {
+  .post-detail-container {
+    padding: 1rem;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .post-content,
+  .comments-section {
+    padding: 1rem;
+  }
+
+  .post-title {
+    font-size: 1.5rem;
   }
 }
 </style>

@@ -1,8 +1,8 @@
 <template>
-  <div class="login-container">
-    <div class="login-box">
-      <h2 class="text-center mb-4">登录</h2>
-      <form @submit.prevent="handleLogin">
+  <div class="register-container">
+    <div class="register-box">
+      <h2 class="text-center mb-4">注册</h2>
+      <form @submit.prevent="handleRegister">
         <div class="mb-3">
           <label for="username" class="form-label">用户名</label>
           <input
@@ -10,6 +10,16 @@
             class="form-control"
             id="username"
             v-model="formData.username"
+            required
+          >
+        </div>
+        <div class="mb-3">
+          <label for="email" class="form-label">邮箱</label>
+          <input
+            type="email"
+            class="form-control"
+            id="email"
+            v-model="formData.email"
             required
           >
         </div>
@@ -28,10 +38,10 @@
           class="btn btn-primary w-100"
           :disabled="loading"
         >
-          {{ loading ? '登录中...' : '登录' }}
+          {{ loading ? '注册中...' : '注册' }}
         </button>
         <div class="text-center mt-3">
-          <router-link to="/register">还没有账号？立即注册</router-link>
+          <router-link to="/login">已有账号？立即登录</router-link>
         </div>
       </form>
     </div>
@@ -42,25 +52,30 @@
 import { userApi } from '../api'
 
 export default {
-  name: 'Login',
+  name: 'Register',
   data () {
     return {
       formData: {
         username: '',
+        email: '',
         password: ''
       },
       loading: false
     }
   },
   methods: {
-    async handleLogin () {
+    async handleRegister () {
       try {
         this.loading = true
-        const res = await userApi.login(this.formData)
-        localStorage.setItem('token', res.token)
-        this.$router.push('/posts')
+        await userApi.register(this.formData)
+        this.$bvToast.toast('注册成功，请登录', {
+          title: '提示',
+          variant: 'success',
+          solid: true
+        })
+        this.$router.push('/login')
       } catch (error) {
-        console.error('登录失败:', error)
+        console.error('注册失败:', error)
       } finally {
         this.loading = false
       }
@@ -70,7 +85,7 @@ export default {
 </script>
 
 <style scoped>
-.login-container {
+.register-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -78,7 +93,7 @@ export default {
   background: linear-gradient(135deg, #74ebd5 0%, #acb6e5 100%);
 }
 
-.login-box {
+.register-box {
   width: 100%;
   max-width: 400px;
   padding: 2rem;

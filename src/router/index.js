@@ -5,6 +5,7 @@ import Posts from '../components/Posts.vue'
 import Login from '../components/Login.vue'
 import PostDetail from '../components/PostDetail.vue'
 import CategoryPosts from '../components/CategoryPosts.vue'
+import MessageBoard from '../components/MessageBoard.vue'
 
 Vue.use(VueRouter)
 
@@ -33,6 +34,11 @@ const routes = [
     path: '/category/:category',
     name: 'CategoryPosts',
     component: CategoryPosts
+  },
+  {
+    path: '/messages',
+    name: 'MessageBoard',
+    component: MessageBoard
   }
 ]
 
