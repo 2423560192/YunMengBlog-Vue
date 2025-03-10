@@ -1,13 +1,13 @@
 <template>
   <Home>
-    <div class="post-detail-container">
+    <div class="post-layout">
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-overlay">
         <i class="fas fa-spinner fa-spin"></i>
       </div>
 
       <!-- 文章内容 -->
-      <div v-else class="post-content">
+      <div v-else class="post-detail-container">
         <h1 class="post-title">{{ post.title }}</h1>
 
         <div class="post-meta">
@@ -35,6 +35,7 @@
             mode="preview"
             :preview-theme="previewTheme"
             :code-theme="codeTheme"
+            @change="onContentChange"
           ></v-md-editor>
         </div>
 
@@ -50,51 +51,58 @@
         </div>
       </div>
 
-      <!-- 评论区 -->
-      <div v-if="post.is_published" class="comments-section">
-        <h3 class="comments-title">评论 ({{ totalComments }})</h3>
+      <!-- 文章目录 -->
+      <ArticleToc
+        v-if="post.content"
+        ref="toc"
+        content-selector=".v-md-editor"
+      />
+    </div>
 
-        <!-- 评论输入框 -->
-        <div class="comment-form" v-if="isLoggedIn">
-          <textarea
-            v-model="newComment"
-            class="form-control"
-            rows="3"
-            :placeholder="replyToComment ? `回复 @${replyToComment.user.nickname || replyToComment.user.username}` : '写下你的评论...'"
-          ></textarea>
-          <div class="form-actions">
-            <button
-              v-if="replyToComment"
-              class="btn-cancel"
-              @click="cancelReply"
-            >
-              取消回复
-            </button>
-            <button
-              class="btn-submit"
-              @click="submitComment"
-              :disabled="commentLoading"
-            >
-              {{ commentLoading ? '发送中...' : '发表评论' }}
-            </button>
-          </div>
-        </div>
-        <div v-else class="text-center my-3">
-          <router-link to="/login" class="btn btn-outline-primary">登录后评论</router-link>
-        </div>
+    <!-- 评论区 -->
+    <div v-if="post.is_published" class="comments-section">
+      <h3 class="comments-title">评论 ({{ totalComments }})</h3>
 
-        <!-- 评论列表 - 只显示顶级评论 -->
-        <div class="comments-list">
-          <comment-item
-            v-for="comment in rootComments"
-            :key="comment.id"
-            :comment="comment"
-            :current-user-id="currentUserId"
-            :is-logged-in="isLoggedIn"
-            @reply="replyTo"
-            @delete="deleteComment"
-          />
+      <!-- 评论输入框 -->
+      <div class="comment-form" v-if="isLoggedIn">
+        <textarea
+          v-model="newComment"
+          class="form-control"
+          rows="3"
+          :placeholder="replyToComment ? `回复 @${replyToComment.user.nickname || replyToComment.user.username}` : '写下你的评论...'"
+        ></textarea>
+        <div class="form-actions">
+          <button
+            v-if="replyToComment"
+            class="btn-cancel"
+            @click="cancelReply"
+          >
+            取消回复
+          </button>
+          <button
+            class="btn-submit"
+            @click="submitComment"
+            :disabled="commentLoading"
+          >
+            {{ commentLoading ? '发送中...' : '发表评论' }}
+          </button>
         </div>
+      </div>
+      <div v-else class="text-center my-3">
+        <router-link to="/login" class="btn btn-outline-primary">登录后评论</router-link>
+      </div>
+
+      <!-- 评论列表 - 只显示顶级评论 -->
+      <div class="comments-list">
+        <comment-item
+          v-for="comment in rootComments"
+          :key="comment.id"
+          :comment="comment"
+          :current-user-id="currentUserId"
+          :is-logged-in="isLoggedIn"
+          @reply="replyTo"
+          @delete="deleteComment"
+        />
       </div>
     </div>
   </Home>
@@ -109,6 +117,7 @@ import VMdEditor from '@kangc/v-md-editor'
 import '@kangc/v-md-editor/lib/style/preview.css'
 import vuepressTheme from '@kangc/v-md-editor/lib/theme/vuepress.js'
 import '@kangc/v-md-editor/lib/theme/style/vuepress.css'
+import ArticleToc from './ArticleToc.vue'
 
 VMdEditor.use(vuepressTheme)
 
@@ -117,7 +126,8 @@ export default {
   components: {
     Home,
     CommentItem,
-    VMdEditor
+    VMdEditor,
+    ArticleToc
   },
   data () {
     return {
@@ -339,16 +349,34 @@ export default {
           throw err
         }
       }
+    },
+    onContentChange () {
+      // 内容变化时重新初始化目录
+      this.$nextTick(() => {
+        if (this.$refs.toc) {
+          this.$refs.toc.tryInitToc()
+        }
+      })
     }
   }
 }
 </script>
 
 <style scoped>
-.post-detail-container {
-  max-width: 800px;
+.post-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) 250px;
+  gap: 2rem;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+.post-detail-container {
+  margin: 0 auto;
+  padding: 2rem;
+  position: relative;
+  width: 100%;
 }
 
 .post-content {
@@ -357,6 +385,7 @@ export default {
   padding: 2rem;
   margin-bottom: 2rem;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  width: 100%;
 }
 
 .post-title {
@@ -548,11 +577,11 @@ export default {
 .comments-list {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.0rem;
 }
 
 .comment-item {
-  padding: 1.2rem;
+  padding: 1.0rem;
   border-radius: 10px;
   background: #f8f9fa;
   border-left: 3px solid #3273dc;
@@ -745,31 +774,14 @@ export default {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .post-detail-container {
+@media (max-width: 1024px) {
+  .post-layout {
+    grid-template-columns: 1fr;
     padding: 1rem;
   }
 
-  .post-content, .comments-section {
-    padding: 1.5rem;
-  }
-
-  .post-title {
-    font-size: 1.5rem;
-  }
-
-  .post-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .comment-replies {
-    margin-left: 1rem;
-  }
-
-  .comment-replies::before {
-    left: -1rem;
+  .post-detail-container {
+    padding: 1rem;
   }
 }
 
@@ -854,6 +866,12 @@ export default {
 
 :deep(.v-md-editor) {
   background: transparent !important;
+  width: 100%;
+}
+
+:deep(.v-md-editor__preview) {
+  padding: 0;
+  width: 100%;
 }
 
 .loading-overlay {
