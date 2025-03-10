@@ -2,6 +2,8 @@ import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import axios from 'axios'
+import VueI18n from 'vue-i18n'
+import { messages } from './i18n'
 
 // 配置 axios
 axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://localhost:8000'
@@ -28,9 +30,27 @@ axios.interceptors.response.use(
   }
 )
 
+// 处理路由重复导航的问题
+const originalPush = router.push
+router.push = function push (location) {
+  return originalPush.call(this, location).catch(err => {
+    if (err.name !== 'NavigationDuplicated') {
+      throw err
+    }
+  })
+}
+
+Vue.use(VueI18n)
+
+const i18n = new VueI18n({
+  locale: localStorage.getItem('locale') || 'zh',
+  messages
+})
+
 Vue.config.productionTip = false
 
 new Vue({
   router,
+  i18n,
   render: h => h(App)
 }).$mount('#app')

@@ -2,10 +2,37 @@ import request from '../utils/request'
 
 // 用户相关接口
 export const userApi = {
-  register: data => request.post('/register/', data),
-  login: data => request.post('/login/', data),
-  getUserInfo: () => request.get('/user/'),
-  updateUserInfo: data => request.put('/user/', data)
+  // 用户注册
+  register (data) {
+    return request({
+      url: '/register/',
+      method: 'post',
+      data
+    })
+  },
+  // 用户登录
+  login (data) {
+    return request({
+      url: '/login/',
+      method: 'post',
+      data
+    })
+  },
+  // 获取用户信息
+  getInfo () {
+    return request({
+      url: '/user/',
+      method: 'get'
+    })
+  },
+  // 更新用户信息
+  updateInfo (data) {
+    return request({
+      url: '/user/',
+      method: 'put',
+      data
+    })
+  }
 }
 
 // 文章相关接口

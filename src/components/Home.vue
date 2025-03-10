@@ -1,12 +1,12 @@
 <template>
-  <div class="app-container">
+  <div class="home-layout">
     <!-- 滚动公告栏 -->
     <div class="announcement-bar">
       <div class="announcement-content">
-        <span>欢迎来到云梦博客!</span>
+        <span>欢迎来到云梦物语のBlog!</span>
         <span>最新文章: Vue.js 3.0 深度解析</span>
         <span>加入我们的技术交流群</span>
-        <span>欢迎来到云梦博客!</span>
+        <span>欢迎来到云梦物语のBlog!</span>
       </div>
     </div>
 
@@ -14,7 +14,7 @@
     <nav class="navbar navbar-expand-lg">
       <div class="container">
         <router-link class="navbar-brand" to="/">
-          <span class="brand-text">云梦博客</span>
+          <span class="brand-text">云梦物语のBlog</span>
         </router-link>
         <!-- 更新提示 -->
         <div class="update-hint" v-if="showUpdateHint">
@@ -55,22 +55,19 @@
               <router-link class="nav-link" :class="{ active: $route.path === '/register' }" to="/register">注册</router-link>
             </li>
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle"
-                 href="#"
-                 id="langDropdown"
-                 role="button"
-                 data-bs-toggle="dropdown"
-                 aria-expanded="false"
-              >
+              <button class="btn-lang dropdown-toggle"
+                      type="button"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false">
                 {{ currentLang === 'zh' ? '中文' : 'English' }}
-              </a>
-              <ul class="dropdown-menu" aria-labelledby="langDropdown">
-                <li v-for="lang in languages" :key="lang.code">
+              </button>
+              <ul class="dropdown-menu">
+                <li v-for="lang in languages"
+                    :key="lang.code">
                   <a class="dropdown-item"
                      href="#"
                      @click.prevent="switchLanguage(lang.code)"
-                     :class="{ active: currentLang === lang.code }"
-                  >
+                     :class="{ active: currentLang === lang.code }">
                     {{ lang.name }}
                   </a>
                 </li>
@@ -106,7 +103,7 @@
 
     <!-- 欢迎区域 -->
     <div v-if="$route.path === '/'" class="welcome-section text-center mb-5">
-      <h1 class="display-4">欢迎来到云梦博客</h1>
+      <h1 class="display-4">欢迎来到云梦物语のBlog</h1>
       <p class="lead">分享技术，记录生活</p>
     </div>
 
@@ -127,11 +124,11 @@
                   <a :href="bloggerInfo.social.github" target="_blank" class="social-link">
                     <i class="fab fa-github"></i>
                   </a>
-                  <a :href="bloggerInfo.social.twitter" target="_blank" class="social-link">
-                    <i class="fab fa-twitter"></i>
+                  <a :href="bloggerInfo.social.csdn" target="_blank" class="social-link">
+                    <i class="fas fa-blog"></i>
                   </a>
-                  <a :href="bloggerInfo.social.weibo" target="_blank" class="social-link">
-                    <i class="fab fa-weibo"></i>
+                  <a :href="`mailto:${bloggerInfo.social.email}`" class="social-link">
+                    <i class="fas fa-envelope"></i>
                   </a>
                 </div>
               </div>
@@ -191,44 +188,43 @@
 
     <!-- 社交媒体按钮 -->
     <div class="social-buttons">
-      <a href="#" class="social-button" @click.prevent="handleSocial('github')">
+      <a :href="bloggerInfo.social.github" target="_blank" class="social-button">
         <i class="fab fa-github"></i>
       </a>
-      <a href="#" class="social-button" @click.prevent="handleSocial('twitter')">
-        <i class="fab fa-twitter"></i>
+      <a :href="bloggerInfo.social.csdn" target="_blank" class="social-button">
+        <i class="fas fa-blog"></i>
       </a>
-      <a href="#" class="social-button" @click.prevent="handleSocial('weibo')">
-        <i class="fab fa-weibo"></i>
+      <a :href="`mailto:${bloggerInfo.social.email}`" class="social-button">
+        <i class="fas fa-envelope"></i>
       </a>
     </div>
-
-    <footer class="footer">
-      <div class="container text-center">
-        <p class="mb-0">© 2025 云梦博客. All rights reserved.</p>
-      </div>
-    </footer>
 
     <!-- 推荐文章区域 -->
     <div v-if="$route.path === '/'" class="recommended-section">
       <div class="container">
         <h3 class="section-title mb-4">推荐阅读</h3>
         <div class="row g-4">
-          <div v-for="article in recommendedArticles"
-               :key="article.id"
+          <div v-for="post in recommendedPosts"
+               :key="post.id"
                class="col-md-6 col-lg-3">
             <div class="article-card">
-              <img :src="article.thumbnail"
-                   :alt="article.title"
+              <img :src="getImageUrl(post.cover, 'cover')"
+                   :alt="post.title"
                    class="article-thumbnail"
                    loading="lazy">
               <div class="article-content">
-                <h4 class="article-title">{{ article.title }}</h4>
-                <p class="article-date">{{ article.date }}</p>
+                <h4 class="article-title">{{ post.title }}</h4>
+                <div class="post-meta">
+                  <img :src="getImageUrl(post.author.avatar, 'avatar')"
+                       :alt="post.author.username"
+                       class="author-avatar">
+                  <span class="author-name">{{ post.author.nickname || post.author.username }}</span>
+                </div>
                 <div class="article-actions">
-                  <button class="btn-action" @click="handleLike(article)">
-                    <i class="fas fa-heart"></i> {{ article.likes }}
+                  <button class="btn-action" @click="handleLike(post)">
+                    <i class="fas fa-heart"></i> {{ post.likes }}
                   </button>
-                  <button class="btn-action" @click="handleCollect(article)">
+                  <button class="btn-action" @click="handleCollect(post)">
                     <i class="fas fa-bookmark"></i>
                   </button>
                 </div>
@@ -244,26 +240,32 @@
       </div>
     </div>
 
-    <!-- 最近评论区域 -->
-    <div v-if="$route.path === '/'" class="recent-comments">
+    <!-- 最新评论部分 -->
+    <div class="section-container">
       <div class="container">
-        <h3 class="section-title mb-4">最新评论</h3>
-        <div class="row g-4">
-          <div v-for="comment in recentComments"
-               :key="comment.id"
-               class="col-md-4">
-            <div class="comment-card">
-              <div class="comment-header">
-                <img :src="comment.avatar" :alt="comment.username" class="comment-avatar">
-                <div class="comment-info">
-                  <h5>{{ comment.username }}</h5>
-                  <small>{{ comment.date }}</small>
+        <div class="row">
+          <div class="col-12">
+            <div class="content-card">
+              <h3 class="section-title">
+                <i class="fas fa-comments"></i> 最新评论
+              </h3>
+              <div class="comment-list">
+                <div v-for="comment in filteredComments"
+                     :key="comment.id"
+                     class="comment-item"
+                     @click="goToPost(comment.post_id)">
+                  <div class="comment-header">
+                    <img :src="getImageUrl(comment.user.avatar, 'avatar')"
+                         :alt="comment.user.username"
+                         class="comment-avatar">
+                    <div class="comment-info">
+                      <span class="comment-author">{{ comment.user.nickname || comment.user.username }}</span>
+                      <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+                    </div>
+                  </div>
+                  <div class="comment-content">{{ comment.content }}</div>
                 </div>
               </div>
-              <p class="comment-text">{{ comment.comment }}</p>
-              <button class="btn-view" @click="viewComment(comment)">
-                查看详情
-              </button>
             </div>
           </div>
         </div>
@@ -288,6 +290,12 @@
         </div>
       </div>
     </div>
+
+    <footer class="footer">
+      <div class="container text-center">
+        <p class="mb-0">© 2025 云梦物语のBlog. All rights reserved.</p>
+      </div>
+    </footer>
 
     <!-- 动态通知模态框 -->
     <div class="notification-modal" v-if="showNotification">
@@ -321,57 +329,43 @@ export default {
       currentDate: '',
       timeInterval: null,
       bloggerInfo: {
-        name: '云梦',
+        name: '辰星',
         avatar: require('@/assets/images/default-avatar.png'),
-        bio: '热爱技术，热爱生活。专注于前端开发和技术分享，致力于让编程更简单有趣。',
+        bio: '热爱技术，热爱生活。专注于Python全栈开发和技术分享，致力于让编程更简单有趣。',
         social: {
-          github: 'https://github.com/yunmeng',
-          twitter: 'https://twitter.com/yunmeng',
-          weibo: 'https://weibo.com/yunmeng'
+          github: 'https://github.com/2423560192',
+          csdn: 'https://blog.csdn.net/xiao_a_lian?spm=1000.2115.3001.5343',
+          email: '2480419172@qq.com'
         }
       },
-      categories: [
-        {
-          name: '前端开发',
-          icon: 'fas fa-code',
-          color: '#3498db',
-          count: 15
-        },
-        {
-          name: '生活',
-          icon: 'fas fa-coffee',
-          color: '#4ecdc4',
-          count: 8
-        },
-        {
-          name: '随笔',
-          icon: 'fas fa-pen-fancy',
-          color: '#45b7d1',
-          count: 12
-        }
-      ],
+      categories: [],
       searchQuery: '',
       showSuggestions: false,
       searchSuggestions: [],
       isDarkMode: false,
-      recommendedArticles: [],
+      recommendedPosts: [],
       recentComments: [],
       subscribeEmail: '',
       showUpdateHint: false,
       newArticlesCount: 0,
       showNotification: false,
       notificationTimer: null,
-      currentLang: 'zh',
+      currentLang: this.$i18n.locale,
       languages: [
         { code: 'zh', name: '中文' },
         { code: 'en', name: 'English' }
       ],
-      loading: false
+      loading: false,
+      baseUrl: process.env.VUE_APP_API_URL || 'http://localhost:8000',
+      currentPostId: null
     }
   },
   computed: {
     isLoggedIn () {
       return !!localStorage.getItem('token')
+    },
+    filteredComments () {
+      return this.recentComments.filter(comment => !comment.parent_id)
     }
   },
   methods: {
@@ -402,36 +396,42 @@ export default {
       }, 200)
     },
     handleSocial (platform) {
-      alert(`关注我的 ${platform}!`)
+      if (platform === 'github') {
+        window.open(this.bloggerInfo.social.github, '_blank')
+      } else if (platform === 'csdn') {
+        window.open(this.bloggerInfo.social.csdn, '_blank')
+      } else if (platform === 'email') {
+        window.location.href = `mailto:${this.bloggerInfo.social.email}`
+      }
     },
     toggleTheme () {
       this.isDarkMode = !this.isDarkMode
       document.body.classList.toggle('dark-mode')
     },
-    async handleLike (article) {
+    async handleLike (post) {
       if (!this.isLoggedIn) {
         this.$router.push('/login')
         return
       }
       try {
-        await likeApi.like(article.id)
+        await likeApi.like(post.id)
         this.$bvToast.toast('点赞成功!', {
           title: '提示',
           variant: 'success',
           solid: true
         })
-        article.likes++
+        post.likes++
       } catch (error) {
         console.error('点赞失败:', error)
       }
     },
-    async handleCollect (article) {
+    async handleCollect (post) {
       if (!this.isLoggedIn) {
         this.$router.push('/login')
         return
       }
       try {
-        await collectApi.collect(article.id)
+        await collectApi.collect(post.id)
         this.$bvToast.toast('收藏成功!', {
           title: '提示',
           variant: 'success',
@@ -506,11 +506,11 @@ export default {
       // 这里可以使用 vue-i18n 进行语言切换
       this.$i18n.locale = lang
     },
-    async fetchRecommendedArticles () {
+    async fetchRecommendedPosts () {
       this.loading = true
       try {
-        const articles = await request.get('/posts/?page=1&limit=4')
-        this.recommendedArticles = articles
+        const posts = await request.get('/posts/?page=1&limit=4')
+        this.recommendedPosts = posts
       } catch (error) {
         console.error('获取推荐文章失败:', error)
       } finally {
@@ -518,22 +518,138 @@ export default {
       }
     },
     async fetchRecentComments () {
-      this.loading = true
       try {
-        const comments = await request.get('/comments/?post_id=1') // 示例文章ID
-        this.recentComments = comments
+        // 先获取最新的几篇文章
+        const posts = await request.get('posts/?page=1&limit=3')
+        if (posts && posts.length > 0) {
+          // 获取每篇文章的评论并合并
+          const commentsPromises = posts.map(post =>
+            request.get(`comments/?post_id=${post.id}`)
+          )
+          const commentsResults = await Promise.all(commentsPromises)
+
+          // 合并所有评论并按时间排序
+          this.recentComments = commentsResults
+            .flat()
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .slice(0, 5) // 只显示最新的5条评论
+        }
       } catch (error) {
         console.error('获取最新评论失败:', error)
-      } finally {
-        this.loading = false
       }
+    },
+    goToPost (postId) {
+      this.$router.push(`/posts/${postId}`)
+    },
+    formatDate (date) {
+      return new Date(date).toLocaleDateString('zh-CN', {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+    getImageUrl (url, type) {
+      if (!url) {
+        // 如果没有提供 URL，返回默认图片的 API 地址
+        return `${this.baseUrl}/api/static/${type === 'avatar' ? 'default-avatar.png' : 'default-cover.jpg'}`
+      }
+      // 如果 URL 已经是完整的 URL（以 http 或 https 开头），直接返回
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url
+      }
+      // 否则，拼接基础 URL
+      return `${this.baseUrl}${url}`
+    },
+    async fetchCategories () {
+      try {
+        const response = await this.$axios.get('/api/categories/')
+        if (response.data && Array.isArray(response.data.data)) {
+          // 将后端数据映射到我们需要的格式
+          const categories = response.data.data.map(category => ({
+            name: category.name,
+            icon: this.getCategoryIcon(category.name), // 根据分类名称获取图标
+            color: this.getCategoryColor(category.name), // 根据分类名称获取颜色
+            count: 0 // 初始化为 0，后面会更新
+          }))
+
+          // 获取每个分类的文章数量
+          for (const category of categories) {
+            try {
+              const countResponse = await this.$axios.get('/api/categories/count-posts/', {
+                params: { category_name: category.name }
+              })
+              if (countResponse.data && countResponse.data.data) {
+                category.count = countResponse.data.data.post_count
+              }
+            } catch (error) {
+              console.error(`获取分类 ${category.name} 的文章数量失败:`, error)
+            }
+          }
+
+          this.categories = categories
+        }
+      } catch (error) {
+        console.error('获取分类失败:', error)
+        // 使用默认分类作为后备
+        this.categories = [
+          {
+            name: '技术',
+            icon: 'fas fa-code',
+            color: '#3498db',
+            count: 15
+          },
+          {
+            name: '生活',
+            icon: 'fas fa-coffee',
+            color: '#4ecdc4',
+            count: 8
+          },
+          {
+            name: '随笔',
+            icon: 'fas fa-pen-fancy',
+            color: '#45b7d1',
+            count: 12
+          }
+        ]
+      }
+    },
+    getCategoryIcon (name) {
+      const iconMap = {
+        技术: 'fas fa-code',
+        生活: 'fas fa-coffee',
+        随笔: 'fas fa-pen-fancy'
+        // 可以添加更多映射
+      }
+      return iconMap[name] || 'fas fa-folder' // 默认图标
+    },
+    getCategoryColor (name) {
+      const colorMap = {
+        技术: '#3498db',
+        生活: '#4ecdc4',
+        随笔: '#45b7d1'
+        // 可以添加更多映射
+      }
+      // 如果没有映射，生成一个随机颜色
+      if (!colorMap[name]) {
+        const colors = ['#3498db', '#4ecdc4', '#45b7d1', '#e74c3c', '#9b59b6', '#f1c40f', '#1abc9c']
+        const randomIndex = Math.floor(Math.random() * colors.length)
+        return colors[randomIndex]
+      }
+      return colorMap[name]
+    },
+    toggleLang () {
+      const newLang = this.currentLang === 'zh' ? 'en' : 'zh'
+      this.$i18n.locale = newLang
+      localStorage.setItem('locale', newLang)
     }
   },
   created () {
     this.startNotificationTimer()
     this.updateTime()
     this.timeInterval = setInterval(this.updateTime, 1000)
-    this.fetchRecommendedArticles()
+    this.fetchCategories()
+    this.fetchRecommendedPosts()
     this.fetchRecentComments()
   },
   beforeDestroy () {
@@ -548,7 +664,7 @@ export default {
 </script>
 
 <style scoped>
-.app-container {
+.home-layout {
   position: relative;
   min-height: 100vh;
 }
@@ -963,7 +1079,7 @@ export default {
   --text-color: #ffffff;
 }
 
-.app-container {
+.home-layout {
   background: var(--bg-gradient);
 }
 
@@ -1003,10 +1119,21 @@ export default {
   color: #2c3e50;
 }
 
-.article-date {
-  font-size: 0.9rem;
+.post-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.author-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.author-name {
+  font-size: 0.8rem;
   color: #666;
-  margin-bottom: 1rem;
 }
 
 .article-actions {
@@ -1027,56 +1154,290 @@ export default {
   transform: scale(1.1);
 }
 
-/* 最近评论样式 */
-.recent-comments {
-  padding: 4rem 0;
-  position: relative;
-  z-index: 2;
+/* 最新文章部分 */
+.section-container {
+  padding: 2rem 0;
+  background: var(--bg-gradient);
 }
 
-.comment-card {
+.section-container:nth-child(even) {
+  background: var(--bg-gradient);
+}
+
+.content-card {
   background: white;
-  border-radius: 15px;
+  border-radius: 10px;
   padding: 1.5rem;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.section-title {
+  color: #2c3e50;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-title i {
+  color: #3273dc;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.article-item {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.article-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #e9ecef;
+  transform: translateX(3px);
+}
+
+.article-cover {
+  flex: 0 0 200px;
+  height: 140px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.article-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.article-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.article-title {
+  font-size: 1.2rem;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.article-excerpt {
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.article-meta {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.author-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.author-name {
+  font-size: 0.9rem;
+  color: #2c3e50;
+}
+
+.post-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.post-category {
+  background: rgba(50, 115, 220, 0.1);
+  color: #3273dc;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.post-date {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* 最新评论样式 */
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comment-item {
+  padding: 0.5rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.comment-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #e9ecef;
+  transform: translateX(3px);
 }
 
 .comment-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
 }
 
 .comment-avatar {
-  width: 40px;
-  height: 40px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
+  object-fit: cover;
 }
 
-.comment-info h5 {
-  margin: 0;
-  font-size: 1rem;
+.comment-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.comment-text {
+.comment-author {
+  font-weight: 500;
+  color: #2c3e50;
+  font-size: 0.85rem;
+}
+
+.comment-date {
+  font-size: 0.75rem;
   color: #666;
-  margin-bottom: 1rem;
 }
 
-.btn-view {
-  background: #3273dc;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.comment-content {
+  color: #2c3e50;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-left: 2rem;
 }
 
-.btn-view:hover {
-  background: #2366d1;
-  transform: translateY(-2px);
+/* 暗色模式支持 */
+.dark-mode .section-container {
+  background: var(--bg-gradient-dark);
+}
+
+.dark-mode .section-container:nth-child(even) {
+  background: var(--bg-gradient-dark);
+}
+
+.dark-mode .content-card {
+  background: #2d2d2d;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.dark-mode .section-title {
+  color: #e1e1e1;
+  border-bottom-color: #404040;
+}
+
+.dark-mode .comment-item {
+  background: rgba(51, 51, 51, 0.8);
+}
+
+.dark-mode .comment-item:hover {
+  background: rgba(56, 56, 56, 0.95);
+  border-color: #404040;
+}
+
+.dark-mode .comment-author {
+  color: #e1e1e1;
+}
+
+.dark-mode .comment-content {
+  color: #e1e1e1;
+}
+
+@media (max-width: 768px) {
+  .section-container {
+    padding: 1rem 0;
+  }
+
+  .container {
+    padding: 0 0.5rem;
+  }
+
+  .content-card {
+    padding: 1rem;
+  }
+
+  .section-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .article-item {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .article-cover {
+    flex: 0 0 auto;
+    height: 180px;
+  }
+
+  .article-title {
+    font-size: 1.1rem;
+  }
+
+  .article-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }
 
 /* 订阅表单样式 */
@@ -1251,5 +1612,34 @@ export default {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.btn-lang {
+  padding: 0.5rem 1rem;
+  border: 1px solid #3273dc;
+  border-radius: 4px;
+  background: transparent;
+  color: #3273dc;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 1rem;
+}
+
+.btn-lang:hover {
+  background: #3273dc;
+  color: white;
+}
+
+/* 暗色模式 */
+@media (prefers-color-scheme: dark) {
+  .btn-lang {
+    border-color: #4299e1;
+    color: #4299e1;
+  }
+
+  .btn-lang:hover {
+    background: #4299e1;
+    color: #1a202c;
+  }
 }
 </style>

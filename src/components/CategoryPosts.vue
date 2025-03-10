@@ -4,18 +4,34 @@
       <h2 class="page-title">
         <i :class="categoryInfo.icon"></i>
         {{ categoryName }}分类
+        <span class="post-count" v-if="postCount !== null">
+          ({{ postCount }} 篇文章)
+        </span>
       </h2>
 
-      <div class="post-list">
+      <div v-if="loading" class="text-center my-5">
+        <i class="fas fa-spinner fa-spin fa-2x"></i>
+        <p class="mt-2">加载中...</p>
+      </div>
+
+      <div v-else-if="posts.length === 0" class="empty-state">
+        <i class="fas fa-inbox fa-3x"></i>
+        <p>该分类下暂无文章</p>
+      </div>
+
+      <div v-else class="post-list">
         <div v-for="post in posts"
              :key="post.id"
              class="post-card"
              @click="$router.push(`/posts/${post.id}`)">
-          <h3 class="post-title">{{ post.title }}</h3>
+          <div class="post-header">
+            <img :src="getImageUrl(post.cover, 'cover')" alt="文章封面" class="post-cover">
+            <h3 class="post-title">{{ post.title }}</h3>
+          </div>
           <p class="post-excerpt">{{ post.content }}</p>
           <div class="post-meta">
-            <span class="post-author">
-              <i class="fas fa-user"></i> {{ post.author }}
+            <span class="post-author" v-if="post.author">
+              <i class="fas fa-user"></i> {{ post.author.nickname || post.author.username }}
             </span>
             <span class="post-date">{{ formatDate(post.created_at) }}</span>
           </div>
@@ -35,47 +51,10 @@ export default {
   },
   data () {
     return {
-      categoryPosts: {
-        技术: [
-          {
-            id: 1,
-            title: 'Vue.js 3.0 新特性详解',
-            content: 'Vue.js 3.0 带来了许多激动人心的新特性...',
-            author: '张三',
-            created_at: '2024-03-10'
-          },
-          {
-            id: 2,
-            title: 'React Hooks 最佳实践',
-            content: '深入探讨 React Hooks 的使用技巧...',
-            author: '李四',
-            created_at: '2024-03-09'
-          }
-        ],
-        生活: [
-          {
-            id: 3,
-            title: '程序员的日常健康指南',
-            content: '如何在繁忙的工作中保持健康...',
-            author: '王五',
-            created_at: '2024-03-08'
-          }
-        ],
-        随笔: [
-          {
-            id: 4,
-            title: '我的编程之路',
-            content: '分享我的编程学习经历和心得...',
-            author: '赵六',
-            created_at: '2024-03-07'
-          }
-        ]
-      },
-      categoryIcons: {
-        技术: 'fas fa-code',
-        生活: 'fas fa-coffee',
-        随笔: 'fas fa-pen-fancy'
-      }
+      posts: [],
+      loading: false,
+      postCount: null,
+      baseUrl: process.env.VUE_APP_API_URL || 'http://localhost:8000'
     }
   },
   computed: {
@@ -84,20 +63,74 @@ export default {
     },
     categoryInfo () {
       return {
-        icon: this.categoryIcons[this.categoryName] || 'fas fa-folder'
+        icon: this.getCategoryIcon(this.categoryName)
       }
-    },
-    posts () {
-      return this.categoryPosts[this.categoryName] || []
     }
   },
+  created () {
+    this.fetchCategoryPosts()
+    this.fetchPostCount()
+  },
   methods: {
+    async fetchCategoryPosts () {
+      this.loading = true
+      try {
+        // 使用 API 获取分类文章
+        const response = await this.$axios.get('/api/posts/filter/', {
+          params: { category_name: this.categoryName }
+        })
+
+        if (response.data && response.data.data) {
+          this.posts = response.data.data
+        } else {
+          this.posts = []
+        }
+      } catch (error) {
+        console.error('获取分类文章失败:', error)
+        this.posts = []
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchPostCount () {
+      try {
+        const response = await this.$axios.get('/api/categories/count-posts/', {
+          params: { category_name: this.categoryName }
+        })
+
+        if (response.data && response.data.data) {
+          this.postCount = response.data.data.post_count
+        }
+      } catch (error) {
+        console.error('获取文章数量失败:', error)
+      }
+    },
+
     formatDate (date) {
+      if (!date) return ''
       return new Date(date).toLocaleDateString('zh-CN', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       })
+    },
+    getCategoryIcon (name) {
+      const iconMap = {
+        技术: 'fas fa-code',
+        生活: 'fas fa-coffee',
+        随笔: 'fas fa-pen-fancy'
+      }
+      return iconMap[name] || 'fas fa-folder'
+    },
+    getImageUrl (url, type) {
+      if (!url) {
+        return `${this.baseUrl}/api/static/${type === 'avatar' ? 'default-avatar.png' : 'default-cover.jpg'}`
+      }
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url
+      }
+      return `${this.baseUrl}${url}`
     }
   }
 }
@@ -121,6 +154,12 @@ export default {
   margin-right: 0.5rem;
 }
 
+.post-count {
+  font-size: 1.2rem;
+  opacity: 0.8;
+  margin-left: 0.5rem;
+}
+
 .post-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 8px;
@@ -137,10 +176,24 @@ export default {
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
+.post-header {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.post-cover {
+  width: 100px;
+  height: 70px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
 .post-title {
   color: #2c3e50;
   font-size: 1.5rem;
-  margin-bottom: 1rem;
+  margin: 0;
+  flex: 1;
 }
 
 .post-excerpt {
@@ -158,6 +211,19 @@ export default {
 
 .post-meta i {
   margin-right: 0.5rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  color: #666;
+}
+
+.empty-state i {
+  margin-bottom: 1rem;
+  color: #ccc;
 }
 
 @keyframes fadeIn {

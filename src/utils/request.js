@@ -1,11 +1,31 @@
 import axios from 'axios'
 import router from '../router'
 
+// 添加基础 URL 配置
+const baseURL = process.env.VUE_APP_API_URL || 'http://localhost:8000/api'
+
 // 创建 axios 实例
 const request = axios.create({
-  baseURL: 'http://localhost:8000/api',
-  timeout: 5000 // 将超时设置为 5000 毫秒
+  baseURL,
+  timeout: 5000
 })
+
+// 导出基础 URL 和默认图片路径
+export const defaultImages = {
+  avatar: `${baseURL}/static/default-avatar.png`,
+  cover: `${baseURL}/static/default-cover.jpg`
+}
+
+// 导出获取图片 URL 的工具函数
+export const getImageUrl = (url, type = 'avatar') => {
+  if (!url) {
+    return defaultImages[type]
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  return `${baseURL}${url}`
+}
 
 // 请求拦截器
 request.interceptors.request.use(

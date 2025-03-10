@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import HomeContent from '../components/HomeContent.vue'
 import Posts from '../components/Posts.vue'
 import Login from '../components/Login.vue'
+import Register from '../components/Register.vue'
 import PostDetail from '../components/PostDetail.vue'
 import CategoryPosts from '../components/CategoryPosts.vue'
 import MessageBoard from '../components/MessageBoard.vue'
@@ -26,6 +27,11 @@ const routes = [
     component: Login
   },
   {
+    path: '/register',
+    name: 'Register',
+    component: Register
+  },
+  {
     path: '/posts/:id',
     name: 'PostDetail',
     component: PostDetail
@@ -45,7 +51,13 @@ const routes = [
 const router = new VueRouter({
   mode: 'history',
   base: process.env.BASE_URL,
-  routes
+  routes,
+  scrollBehavior (to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    }
+    return { x: 0, y: 0 }
+  }
 })
 
 export default router
