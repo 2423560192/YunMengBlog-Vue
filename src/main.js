@@ -4,6 +4,9 @@ import router from './router'
 import axios from 'axios'
 import VueI18n from 'vue-i18n'
 import { messages } from './i18n'
+import { Message, MessageBox } from 'element-ui'
+import 'element-ui/lib/theme-chalk/message.css'
+import 'element-ui/lib/theme-chalk/message-box.css'
 
 // 配置 axios
 axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://localhost:8000'
@@ -48,6 +51,9 @@ const i18n = new VueI18n({
 })
 
 Vue.config.productionTip = false
+
+Vue.prototype.$message = Message
+Vue.prototype.$confirm = MessageBox.confirm
 
 new Vue({
   router,

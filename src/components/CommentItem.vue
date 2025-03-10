@@ -7,19 +7,19 @@
       <div class="comment-info">
         <span class="comment-author">{{ comment.user.nickname || comment.user.username }}</span>
         <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+        <div class="comment-actions">
+          <button class="btn-action" @click="handleReply" v-if="isLoggedIn">
+            <i class="fas fa-reply"></i> 回复
+          </button>
+          <button class="btn-action btn-delete"
+                  v-if="isLoggedIn && currentUserId === comment.user.id"
+                  @click="handleDelete">
+            <i class="fas fa-trash-alt"></i> 删除
+          </button>
+        </div>
       </div>
     </div>
     <div class="comment-content">{{ comment.content }}</div>
-    <div class="comment-actions">
-      <button class="btn-reply" @click="handleReply" v-if="isLoggedIn">
-        <i class="fas fa-reply"></i> 回复
-      </button>
-      <button class="btn-delete"
-              v-if="isLoggedIn && comment.user.id === currentUserId"
-              @click="handleDelete">
-        <i class="fas fa-trash"></i>
-      </button>
-    </div>
 
     <!-- 递归渲染子评论 -->
     <div class="comment-replies" v-if="comment.children && comment.children.length > 0">
@@ -65,6 +65,12 @@ export default {
       baseUrl: process.env.VUE_APP_API_URL || 'http://localhost:8000'
     }
   },
+  computed: {
+    isOwnComment () {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      return user.id === this.comment.user.id
+    }
+  },
   methods: {
     getImageUrl,
     formatDate (date) {
@@ -101,6 +107,11 @@ export default {
   align-items: center;
   gap: 0.8rem;
   margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.comment-header:hover .comment-actions {
+  display: flex;
 }
 
 .comment-avatar {
@@ -116,6 +127,8 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  position: relative;
+  flex: 1;
 }
 
 .comment-author {
@@ -137,10 +150,38 @@ export default {
 }
 
 .comment-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
   display: flex;
-  justify-content: flex-end;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.comment-info:hover .comment-actions {
+  opacity: 1;
+}
+
+.btn-action {
+  padding: 0.3rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  background: #f8f9fa;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-delete {
+  color: #dc3545;
+}
+
+.btn-delete:hover {
+  background: rgba(220, 53, 69, 0.1);
 }
 
 .comment-replies {
@@ -178,6 +219,14 @@ export default {
 
   .nested-comment {
     background: rgba(26, 32, 44, 0.5);
+  }
+
+  .btn-action:hover {
+    background: #2d3748;
+  }
+
+  .btn-delete:hover {
+    background: rgba(220, 53, 69, 0.2);
   }
 }
 </style>

@@ -1,8 +1,13 @@
 <template>
   <Home>
     <div class="post-detail-container">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading-overlay">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+
       <!-- 文章内容 -->
-      <div class="post-content">
+      <div v-else class="post-content">
         <h1 class="post-title">{{ post.title }}</h1>
 
         <div class="post-meta">
@@ -24,7 +29,14 @@
           </span>
         </div>
 
-        <div class="post-body" v-html="post.content"></div>
+        <div class="post-body">
+          <v-md-editor
+            v-model="post.content"
+            mode="preview"
+            :preview-theme="previewTheme"
+            :code-theme="codeTheme"
+          ></v-md-editor>
+        </div>
 
         <div class="post-actions">
           <button class="btn-action" @click="handleLike">
@@ -39,7 +51,7 @@
       </div>
 
       <!-- 评论区 -->
-      <div class="comments-section">
+      <div v-if="post.is_published" class="comments-section">
         <h3 class="comments-title">评论 ({{ totalComments }})</h3>
 
         <!-- 评论输入框 -->
@@ -93,12 +105,19 @@ import Home from './Home.vue'
 import CommentItem from './CommentItem.vue'
 import { postApi, commentApi, likeApi, collectApi } from '../api'
 import { getImageUrl } from '../utils/request'
+import VMdEditor from '@kangc/v-md-editor'
+import '@kangc/v-md-editor/lib/style/preview.css'
+import vuepressTheme from '@kangc/v-md-editor/lib/theme/vuepress.js'
+import '@kangc/v-md-editor/lib/theme/style/vuepress.css'
+
+VMdEditor.use(vuepressTheme)
 
 export default {
   name: 'PostDetail',
   components: {
     Home,
-    CommentItem
+    CommentItem,
+    VMdEditor
   },
   data () {
     return {
@@ -112,7 +131,9 @@ export default {
       loading: false,
       commentLoading: false,
       baseUrl: process.env.VUE_APP_API_URL || 'http://localhost:8000',
-      replyToComment: null
+      replyToComment: null,
+      previewTheme: 'vuepress',
+      codeTheme: 'tomorrow'
     }
   },
   computed: {
@@ -145,7 +166,6 @@ export default {
   },
   created () {
     this.fetchPost()
-    this.fetchComments()
   },
   mounted () {
     window.scrollTo(0, 0)
@@ -154,7 +174,6 @@ export default {
     '$route' (to, from) {
       if (to.params.id !== from.params.id) {
         this.fetchPost()
-        this.fetchComments()
         window.scrollTo(0, 0)
       }
     }
@@ -174,19 +193,28 @@ export default {
     async fetchPost () {
       try {
         this.loading = true
-        const response = await postApi.getDetail(this.postId)
-        this.post = response
+        const response = await postApi.getDetail(this.$route.params.id)
+        this.post = response.data
+
+        if (this.post.is_published) {
+          this.fetchComments()
+        }
       } catch (error) {
         console.error('获取文章详情失败:', error)
+        this.$message({
+          message: '获取文章详情失败',
+          type: 'error',
+          duration: 2000
+        })
+        this.$router.push('/posts')
       } finally {
         this.loading = false
       }
     },
     async fetchComments () {
       try {
-        const response = await commentApi.getList(this.postId)
+        const response = await (await commentApi.getList({ post_id: this.$route.params.id })).data
         this.comments = response || []
-        console.log('评论数据:', this.comments)
       } catch (error) {
         console.error('获取评论失败:', error)
       }
@@ -212,10 +240,12 @@ export default {
       try {
         this.commentLoading = true
         const data = {
-          post_id: this.postId,
+          post_id: this.$route.params.id,
           content: this.newComment,
           parent_id: this.replyToComment ? this.replyToComment.id : null
         }
+        console.log('评论传输数据：', data)
+
         await commentApi.create(data)
         this.newComment = ''
         this.replyToComment = null
@@ -227,13 +257,42 @@ export default {
       }
     },
     async deleteComment (commentId) {
-      if (!confirm('确定要删除这条评论吗？')) return
+      // 先找到要删除的评论
+      const commentToDelete = this.comments.find(c => c.id === commentId)
+
+      // 检查是否是自己的评论
+      if (!commentToDelete || commentToDelete.user.id !== this.currentUserId) {
+        this.$message({
+          message: '只能删除自己的评论',
+          type: 'warning',
+          duration: 2000
+        })
+        return
+      }
 
       try {
+        await this.$confirm('确定要删除这条评论吗？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+
         await commentApi.delete(commentId)
         await this.fetchComments()
+        this.$message({
+          message: '删除成功',
+          type: 'success',
+          duration: 2000
+        })
       } catch (error) {
-        console.error('删除评论失败:', error)
+        if (error !== 'cancel') {
+          console.error('删除评论失败:', error)
+          this.$message({
+            message: '删除失败',
+            type: 'error',
+            duration: 2000
+          })
+        }
       }
     },
     async handleLike () {
@@ -791,5 +850,21 @@ export default {
   .btn-cancel:hover {
     background: #2d3748;
   }
+}
+
+:deep(.v-md-editor) {
+  background: transparent !important;
+}
+
+.loading-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.loading-overlay i {
+  font-size: 2rem;
+  color: #3498db;
 }
 </style>

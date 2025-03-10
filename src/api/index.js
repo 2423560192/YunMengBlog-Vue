@@ -46,7 +46,7 @@ export const postApi = {
 
 // 评论相关接口
 export const commentApi = {
-  getList: postId => request.get('/comments/', { params: { post_id: postId } }),
+  getList: params => request.get('/comments/', { params }),
   create: data => request.post('/comments/', data),
   delete: id => request.delete(`/comments/${id}/`)
 }
@@ -61,4 +61,30 @@ export const likeApi = {
 export const collectApi = {
   collect: postId => request.post('/collect/', { post_id: postId }),
   uncollect: id => request.delete(`/collect/${id}/`)
+}
+
+export const categoryApi = {
+  getList () {
+    return request({
+      url: '/categories/',
+      method: 'get'
+    })
+  }
+}
+
+// 添加标签相关接口
+export const tagApi = {
+  getList () {
+    return request({
+      url: '/tags/',
+      method: 'get'
+    })
+  },
+  create (data) {
+    return request({
+      url: '/tags/',
+      method: 'post',
+      data
+    })
+  }
 }

@@ -54,6 +54,14 @@
             <li class="nav-item" v-if="!isLoggedIn">
               <router-link class="nav-link" :class="{ active: $route.path === '/register' }" to="/register">注册</router-link>
             </li>
+            <li class="nav-item">
+              <router-link
+                to="/write"
+                class="nav-link btn-write"
+              >
+                <i class="fas fa-pen"></i> 写文章
+              </router-link>
+            </li>
             <li class="nav-item dropdown">
               <button class="btn-lang dropdown-toggle"
                       type="button"
@@ -215,10 +223,11 @@
               <div class="article-content">
                 <h4 class="article-title">{{ post.title }}</h4>
                 <div class="post-meta">
-                  <img :src="getImageUrl(post.author.avatar, 'avatar')"
+                  <img v-if="post.author"
+                       :src="post.author.avatar"
                        :alt="post.author.username"
                        class="author-avatar">
-                  <span class="author-name">{{ post.author.nickname || post.author.username }}</span>
+                  <span class="author-name">{{ post.author ? (post.author.nickname || post.author.username) : '匿名用户' }}</span>
                 </div>
                 <div class="article-actions">
                   <button class="btn-action" @click="handleLike(post)">
@@ -520,16 +529,24 @@ export default {
     async fetchRecentComments () {
       try {
         // 先获取最新的几篇文章
-        const posts = await request.get('posts/?page=1&limit=3')
+        const posts = await (await request.get('posts/?page=1&limit=3')).data
+        console.log('文章', posts)
         if (posts && posts.length > 0) {
           // 获取每篇文章的评论并合并
           const commentsPromises = posts.map(post =>
-            request.get(`comments/?post_id=${post.id}`)
+            request.get('comments/', {
+              params: {
+                post_id: post.id,
+                post_published: true
+              }
+            })
           )
           const commentsResults = await Promise.all(commentsPromises)
+          console.log('评论', commentsResults)
 
           // 合并所有评论并按时间排序
           this.recentComments = commentsResults
+            .map(result => result.data || []) // 获取 data 字段
             .flat()
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
             .slice(0, 5) // 只显示最新的5条评论
@@ -552,7 +569,7 @@ export default {
     getImageUrl (url, type) {
       if (!url) {
         // 如果没有提供 URL，返回默认图片的 API 地址
-        return `${this.baseUrl}/api/static/${type === 'avatar' ? 'default-avatar.png' : 'default-cover.jpg'}`
+        return `${this.baseUrl}/static/${type === 'avatar' ? 'default-avatar.png' : 'default-cover.jpg'}`
       }
       // 如果 URL 已经是完整的 URL（以 http 或 https 开头），直接返回
       if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -996,7 +1013,7 @@ export default {
 .weather-widget {
   position: fixed;
   right: 30px;
-  top: 200px;
+  top: 250px;
   z-index: 2;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
@@ -1641,5 +1658,19 @@ export default {
     background: #4299e1;
     color: #1a202c;
   }
+}
+
+.btn-write {
+  background: #3498db;
+  color: white !important;
+  padding: 0.5rem 1.2rem;
+  border-radius: 20px;
+  margin: 0 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-write:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
 }
 </style>

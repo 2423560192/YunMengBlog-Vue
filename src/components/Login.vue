@@ -65,17 +65,20 @@ export default {
 
       try {
         const response = await userApi.login(this.form)
+        const { token, user } = response.data
         // 保存用户信息和 token
-        localStorage.setItem('token', response.token)
+        localStorage.setItem('token', `Bearer ${token}`)
         localStorage.setItem('user', JSON.stringify({
-          id: response.id,
-          username: response.username
+          id: user.id,
+          username: user.username,
+          nickname: user.nickname,
+          avatar: user.avatar
         }))
 
         // 跳转到首页
         this.$router.push('/')
       } catch (error) {
-        this.error = error.response?.data?.error || '登录失败，请稍后重试'
+        this.error = error.response?.data?.message || '登录失败，请稍后重试'
       } finally {
         this.loading = false
       }

@@ -7,6 +7,7 @@ import Register from '../components/Register.vue'
 import PostDetail from '../components/PostDetail.vue'
 import CategoryPosts from '../components/CategoryPosts.vue'
 import MessageBoard from '../components/MessageBoard.vue'
+import WritePost from '../components/WritePost.vue'
 
 Vue.use(VueRouter)
 
@@ -45,6 +46,12 @@ const routes = [
     path: '/messages',
     name: 'MessageBoard',
     component: MessageBoard
+  },
+  {
+    path: '/write',
+    name: 'WritePost',
+    component: WritePost,
+    meta: { requiresAuth: true }
   }
 ]
 
