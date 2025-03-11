@@ -69,6 +69,13 @@ export const categoryApi = {
       url: '/categories/',
       method: 'get'
     })
+  },
+  create (data) {
+    return request({
+      url: '/categories/',
+      method: 'post',
+      data
+    })
   }
 }
 

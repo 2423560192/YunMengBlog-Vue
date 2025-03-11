@@ -11,16 +11,34 @@
         <div class="post-meta">
           <div class="meta-item">
             <i class="fas fa-folder"></i>
-            <select v-model="post.category" class="category-select">
-              <option value="">选择分类</option>
-              <option
-                v-for="category in categories"
-                :key="category.id"
-                :value="category.id"
-              >
-                {{ category.name }}
-              </option>
-            </select>
+            <div class="category-input-group">
+              <select v-model="post.category" class="category-select">
+                <option value="">选择分类</option>
+                <option
+                  v-for="category in categories"
+                  :key="category.id"
+                  :value="category.id"
+                >
+                  {{ category.name }}
+                </option>
+              </select>
+              <div class="category-add">
+                <input
+                  type="text"
+                  v-model="newCategory"
+                  @keyup.enter="addNewCategory"
+                  placeholder="输入新分类后回车"
+                  class="category-input"
+                >
+                <button
+                  class="btn-add-category"
+                  @click="addNewCategory"
+                  :disabled="!newCategory.trim()"
+                >
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="meta-item tags-input">
             <i class="fas fa-tags"></i>
@@ -32,18 +50,26 @@
                   @keyup.enter="addNewTag"
                   placeholder="输入新标签后回车"
                 >
-                <select v-model="selectedTag" @change="addSelectedTag" class="tags-select">
+                <select
+                  v-model="selectedTag"
+                  @change="addSelectedTag"
+                  class="tags-select"
+                >
                   <option value="">选择已有标签</option>
-                  <option v-for="tag in availableTags"
-                          :key="tag.id"
-                          :value="tag">
+                  <option
+                    v-for="tag in availableTags.filter(t =>
+                      !post.tags.some(pt => pt.name === t.name)
+                    )"
+                    :key="tag.id"
+                    :value="tag"
+                  >
                     {{ tag.name }}
                   </option>
                 </select>
               </div>
               <div class="tags-list">
                 <span v-for="tag in post.tags"
-                      :key="tag.id"
+                      :key="tag.name"
                       class="tag">
                   {{ tag.name }}
                   <i class="fas fa-times" @click.stop="removeTag(tag)"></i>
@@ -65,6 +91,7 @@
           :code-theme="codeTheme"
           :resize-observer="resizeOptions"
           @paste.native="handlePaste"
+          @drop.native.prevent="handleDrop"
           :delayed-render="true"
         ></v-md-editor>
       </div>
@@ -129,6 +156,8 @@ export default {
         tags: []
       },
       tagInput: '',
+      availableTags: [],
+      selectedTag: '',
       categories: [],
       loading: false,
       previewTheme: 'vuepress',
@@ -154,10 +183,9 @@ export default {
         throttle: 200,
         delay: 50
       },
-      availableTags: [],
-      selectedTag: '',
       postId: null,
-      isSaving: false
+      isSaving: false,
+      newCategory: ''
     }
   },
   computed: {
@@ -171,7 +199,7 @@ export default {
     async fetchCategories () {
       try {
         const response = await categoryApi.getList()
-        this.categories = response
+        this.categories = response.data || []
       } catch (error) {
         console.error('获取分类失败:', error)
         this.$message.error('获取分类失败')
@@ -180,50 +208,63 @@ export default {
     async fetchTags () {
       try {
         const response = await tagApi.getList()
-        this.availableTags = response
+        this.availableTags = response.data || []
       } catch (error) {
         console.error('获取标签失败:', error)
-        this.$message.error('获取标签失败')
       }
     },
     addSelectedTag () {
-      if (this.selectedTag && !this.post.tags.find(t => t.id === this.selectedTag.id)) {
+      if (!this.selectedTag) return
+      if (!this.post.tags.some(t => t.name === this.selectedTag.name)) {
         this.post.tags.push(this.selectedTag)
       }
       this.selectedTag = ''
     },
-    async addNewTag () {
-      if (!this.tagInput) return
+    addNewTag () {
+      if (!this.tagInput.trim()) return
 
-      try {
-        const response = await tagApi.create({ name: this.tagInput })
-        const newTag = response
-        this.availableTags.push(newTag)
-        this.post.tags.push(newTag)
+      if (this.post.tags.some(tag => tag.name === this.tagInput.trim())) {
+        this.$message.warning('该标签已存在')
         this.tagInput = ''
-      } catch (error) {
-        console.error('创建标签失败:', error)
-        this.$message.error('创建标签失败')
+        return
       }
+
+      const existingTag = this.availableTags.find(
+        tag => tag.name.toLowerCase() === this.tagInput.trim().toLowerCase()
+      )
+
+      if (existingTag) {
+        this.post.tags.push(existingTag)
+      } else {
+        this.post.tags.push({
+          name: this.tagInput.trim()
+        })
+      }
+
+      this.tagInput = ''
     },
     removeTag (tag) {
-      this.post.tags = this.post.tags.filter(t => t.id !== tag.id)
+      this.post.tags = this.post.tags.filter(t => t.name !== tag.name)
     },
     formatPostData () {
       return {
         title: this.post.title,
         content: this.post.content,
         category: {
-          name: this.categories.find(c => c.id === this.post.category)?.name || ''
+          name: this.categories.find(c => c.id === this.post.category)?.name || '',
+          id: this.post.category
         },
         tags: this.post.tags.map(tag => ({
-          name: tag.name
+          name: tag.name,
+          id: tag.id
         })),
-        is_published: false // 或 true，取决于是保存草稿还是发布
+        is_published: false
       }
     },
     async saveDraft () {
+      if (this.loading) return
       try {
+        this.loading = true
         if (!this.post.title) {
           this.$message({
             message: '请输入文章标题',
@@ -236,21 +277,31 @@ export default {
         const postData = this.formatPostData()
         postData.is_published = false
 
+        let response
         if (this.postId) {
-          await postApi.update(this.postId, postData)
+          response = await postApi.update(this.postId, postData)
           this.$message({
             message: '草稿更新成功',
             type: 'success',
             duration: 2000
           })
         } else {
-          const response = await postApi.create(postData)
-          this.postId = response.id
+          response = await postApi.create(postData)
+          this.postId = response.data.id
           this.$message({
             message: '草稿保存成功',
             type: 'success',
             duration: 2000
           })
+        }
+
+        if (response.data) {
+          this.post = {
+            ...this.post,
+            id: response.data.id,
+            created_at: response.data.created_at,
+            updated_at: response.data.updated_at
+          }
         }
       } catch (error) {
         console.error('保存草稿失败:', error)
@@ -259,9 +310,12 @@ export default {
           type: 'error',
           duration: 2000
         })
+      } finally {
+        this.loading = false
       }
     },
     async publishPost () {
+      if (this.loading) return
       if (!this.canPublish) {
         this.$message({
           message: '请填写完整文章信息',
@@ -272,13 +326,16 @@ export default {
       }
 
       try {
+        this.loading = true
         const postData = this.formatPostData()
         postData.is_published = true
 
+        let response
         if (this.postId) {
-          await postApi.update(this.postId, postData)
+          response = await postApi.update(this.postId, postData)
         } else {
-          await postApi.create(postData)
+          response = await postApi.create(postData)
+          this.postId = response.data.id
         }
 
         this.$message({
@@ -294,99 +351,68 @@ export default {
           type: 'error',
           duration: 2000
         })
+      } finally {
+        this.loading = false
       }
     },
-    handlePaste (event) {
-      event.preventDefault()
+    handlePaste (e) {
+      e.preventDefault()
 
-      const text = event.clipboardData.getData('text/plain')
+      const text = e.clipboardData.getData('text/plain')
 
-      const markdownText = this.convertToMarkdown(text)
+      const cleanedText = this.cleanMarkdownText(text)
 
-      document.execCommand('insertText', false, markdownText)
+      document.execCommand('insertText', false, cleanedText)
     },
-    convertToMarkdown (text) {
-      const lines = text.split('\n')
-      let markdown = ''
-      let inCodeBlock = false
-      let codeBlockLang = ''
+    handleDrop (e) {
+      e.preventDefault()
 
-      lines.forEach((line, index) => {
-        // 保留原始缩进
-        const originalLine = line
-        line = line.trimRight()
-        const indent = originalLine.match(/^\s*/)[0]
+      const text = e.dataTransfer.getData('text/plain')
 
-        if (!line) {
-          markdown += '\n'
-          return
-        }
+      const cleanedText = this.cleanMarkdownText(text)
 
-        // 检测代码块（包括语雀的代码块格式）
-        if (line.match(/^```/) || line.match(/^`{3,}/)) {
-          inCodeBlock = !inCodeBlock
-          if (inCodeBlock) {
-            // 提取语言标识
-            codeBlockLang = line.replace(/^```\s*/, '').trim()
-            markdown += '```' + codeBlockLang + '\n'
-          } else {
-            markdown += '```\n'
-          }
-          return
-        }
-
-        // 处理代码块内容
-        if (inCodeBlock) {
-          markdown += indent + line + '\n'
-          return
-        }
-
-        // 标题处理
-        if (line.match(/^第[一二三四五六七八九十百千万]+[章节]/)) {
-          markdown += '# ' + line + '\n'
-          return
-        }
-
-        // 子标题处理
-        if (line.match(/^[\d.]+\s+/) || line.match(/^[一二三四五六七八九十][.、]\s*/)) {
-          const level = line.split('.').length > 2 ? '###' : '##'
-          markdown += level + ' ' + line.replace(/^[\d.]+\s+|^[一二三四五六七八九十][.、]\s*/, '') + '\n'
-          return
-        }
-
-        // 检测可能的小标题（根据文本特征）
-        if (line.length < 40 && !line.endsWith('。') && !line.endsWith('；') &&
-            !line.match(/[,，:：]/) && line.match(/^[^\s-•]/)) {
-          markdown += '### ' + line + '\n'
-          return
-        }
-
-        // 列表处理
-        if (line.match(/^[•·。○●◆◇■□▪▫-]/)) {
-          markdown += '- ' + line.replace(/^[•·。○●◆◇■□▪▫-]\s*/, '') + '\n'
-          return
-        }
-
-        if (line.match(/^\d+[.、]\s/)) {
-          markdown += line.replace(/^(\d+)[.、]\s/, '$1. ') + '\n'
-          return
-        }
-
-        // 代码片段处理（行内代码）
-        if (line.match(/^\s{2,}/) && !line.match(/[。，；：！？]/)) {
-          markdown += '`' + line.trim() + '`\n'
-          return
-        }
-
-        // 普通段落
-        markdown += line + '\n\n'
-      })
-
-      // 清理多余的空行并保持适当的段落间距
-      return markdown
+      const selection = window.getSelection()
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      range.insertNode(document.createTextNode(cleanedText))
+    },
+    cleanMarkdownText (text) {
+      return text
+        .replace(/#{3,}\s+#{1,2}/g, (match) => {
+          const lastHashes = match.match(/#*$/)[0]
+          return lastHashes
+        })
         .replace(/\n{3,}/g, '\n\n')
-        .replace(/```\n\n/g, '```\n')
+        .replace(/\s+$/gm, '')
         .trim()
+    },
+    addNewCategory () {
+      if (!this.newCategory.trim()) return
+
+      const categoryName = this.newCategory.trim()
+      if (this.categories.some(c => c.name.toLowerCase() === categoryName.toLowerCase())) {
+        this.$message.warning('该分类已存在')
+        this.newCategory = ''
+        return
+      }
+
+      const existingCategory = this.categories.find(
+        c => c.name.toLowerCase() === categoryName.toLowerCase()
+      )
+
+      if (existingCategory) {
+        this.post.category = existingCategory.id
+      } else {
+        const newCategory = {
+          id: `temp_${Date.now()}`,
+          name: categoryName
+        }
+        this.categories.push(newCategory)
+        this.post.category = newCategory.id
+      }
+
+      this.$message.success('分类添加成功')
+      this.newCategory = ''
     }
   },
   created () {
@@ -436,75 +462,81 @@ export default {
 
 .meta-item {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 600px;
 }
 
 .meta-item i {
-  color: #666;
+  margin-top: 0.5rem;
+  color: #3498db;
+  font-size: 1.2rem;
 }
 
-.category-select {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  background: transparent;
-  color: #2c3e50;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.category-select:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
-}
-
-.tags-input {
-  flex: 1;
-}
-
-.tags-container {
+.category-input-group,
+.tags-input-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.tags-input-group {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.tags-input-group input {
   flex: 1;
-  min-width: 200px;
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: transparent;
-  transition: all 0.3s ease;
 }
 
+.category-select,
+.category-input,
+.tags-input-group input,
 .tags-select {
-  width: auto;
-  padding: 0.5rem 2rem 0.5rem 1rem;
-  border: 1px solid #ddd;
+  height: 40px;
+  padding: 0 12px;
+  border: 2px solid #e2e8f0;
   border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
+  font-size: 0.95rem;
+  color: #2d3748;
+  background-color: white;
   transition: all 0.3s ease;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.5rem center;
 }
 
+.category-select,
+.tags-select {
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.category-select:focus,
+.category-input:focus,
 .tags-input-group input:focus,
 .tags-select:focus {
   outline: none;
   border-color: #3498db;
-  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.category-add {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-add-category {
+  height: 40px;
+  width: 40px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tags-list {
@@ -515,34 +547,30 @@ export default {
 }
 
 .tag {
-  background: #f8f9fa;
-  padding: 0.3rem 1rem;
+  background: #ebf5ff;
+  color: #3182ce;
+  padding: 4px 12px;
   border-radius: 20px;
   font-size: 0.9rem;
-  color: #2c3e50;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   transition: all 0.3s ease;
-  border: 1px solid #eee;
+  border: none;
+  font-weight: 500;
 }
 
 .tag i {
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.7;
   font-size: 0.8rem;
   transition: all 0.3s ease;
 }
 
 .tag:hover {
-  background: #fff;
+  background: #e1efff;
   transform: translateY(-1px);
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.tag i:hover {
-  opacity: 1;
-  color: #e74c3c;
 }
 
 .editor-container {
@@ -614,21 +642,35 @@ export default {
     color: #e2e8f0;
   }
 
+  .meta-item {
+    background: rgba(45, 55, 72, 0.9);
+  }
+
+  .meta-item i {
+    color: #4299e1;
+  }
+
   .category-select,
-  .tags-input input {
-    background: #1a202c;
+  .category-input,
+  .tags-input-group input,
+  .tags-select {
+    background-color: #1a202c;
     border-color: #4a5568;
     color: #e2e8f0;
+  }
+
+  .category-select,
+  .tags-select {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e2e8f0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
 
   .tag {
     background: #2d3748;
-    border-color: #4a5568;
-    color: #e2e8f0;
+    color: #63b3ed;
   }
 
   .tag:hover {
-    background: #1a202c;
+    background: #2c5282;
   }
 
   .btn-draft {
@@ -653,17 +695,6 @@ export default {
   :deep(.v-md-editor__toolbar-item:hover) {
     color: #4299e1 !important;
   }
-
-  .tags-input-group input,
-  .tags-select {
-    background-color: #1a202c;
-    border-color: #4a5568;
-    color: #e2e8f0;
-  }
-
-  .tags-select {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e2e8f0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  }
 }
 
 /* 自定义编辑器样式 */
@@ -682,5 +713,80 @@ export default {
 
 :deep(.v-md-editor__toolbar-item:hover) {
   color: #3498db !important;
+}
+
+.category-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.category-add {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.category-input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.category-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.btn-add-category {
+  padding: 0.5rem 1rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-add-category:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.btn-add-category:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 暗色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .category-input {
+    background: #1a202c;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .category-input:focus {
+    border-color: #4299e1;
+    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.1);
+  }
+
+  .btn-add-category {
+    background: #4299e1;
+  }
+
+  .btn-add-category:hover {
+    background: #3182ce;
+  }
+
+  .btn-add-category:disabled {
+    background: #4a5568;
+  }
 }
 </style>

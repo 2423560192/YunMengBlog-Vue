@@ -33,6 +33,22 @@ axios.interceptors.response.use(
   }
 )
 
+// 处理 ResizeObserver 错误
+const resizeHandler = () => {
+  const resizeObserverError = document.getElementById('webpack-dev-server-client-overlay')
+  if (resizeObserverError) {
+    resizeObserverError.remove()
+  }
+}
+
+window.addEventListener('error', (e) => {
+  if (e.message === 'ResizeObserver loop completed with undelivered notifications.') {
+    resizeHandler()
+    e.stopPropagation()
+    e.preventDefault()
+  }
+})
+
 // 处理路由重复导航的问题
 const originalPush = router.push
 router.push = function push (location) {
