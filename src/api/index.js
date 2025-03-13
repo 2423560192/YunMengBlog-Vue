@@ -41,7 +41,11 @@ export const postApi = {
   getDetail: id => request.get(`/posts/${id}/`),
   create: data => request.post('/posts/', data),
   update: (id, data) => request.put(`/posts/${id}/`, data),
-  delete: id => request.delete(`/posts/${id}/`)
+  delete: id => request.delete(`/posts/${id}/`),
+  // 根据分类获取文章列表
+  getPostsByCategory: categoryName => request.get('http://127.0.0.1:8000/api/posts/filter/', {
+    params: { category_name: categoryName }
+  })
 }
 
 // 评论相关接口

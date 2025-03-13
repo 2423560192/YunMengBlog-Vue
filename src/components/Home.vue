@@ -285,7 +285,7 @@
 </template>
 
 <script>
-import { likeApi, collectApi } from '../api'
+import { likeApi, collectApi, postApi } from '../api'
 import request from '@/utils/request'
 
 export default {
@@ -350,8 +350,29 @@ export default {
         weekday: 'long'
       })
     },
-    handleCategoryClick (category) {
-      this.$router.push(`/category/${category.name}`)
+    async handleCategoryClick (category) {
+      try {
+        // 获取该分类下的文章列表
+        const response = await postApi.getPostsByCategory(category.name)
+
+        if (response.data && Array.isArray(response.data)) {
+          // 将文章列表和分类信息传递给文章列表页面
+          this.$router.push({
+            path: '/posts',
+            query: {
+              category: category.name
+            },
+            state: {
+              posts: response.data
+            }
+          })
+        } else {
+          throw new Error('Invalid response format')
+        }
+      } catch (error) {
+        console.error('获取分类文章失败:', error)
+        this.$message.error('获取分类文章失败，请稍后重试')
+      }
     },
     handleSearch (query) {
       alert(`搜索: ${query}`)
