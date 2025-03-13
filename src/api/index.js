@@ -53,14 +53,26 @@ export const commentApi = {
 
 // 点赞相关接口
 export const likeApi = {
+  // 点赞
   like: postId => request.post('/like/', { post_id: postId }),
-  unlike: id => request.delete(`/like/${id}/`)
+
+  // 取消点赞 - 使用 post_id 而不是 like_id
+  unlike: postId => request.delete(`/like/${postId}/`),
+
+  // 获取点赞状态
+  getStatus: postId => request.get(`/like/status/${postId}/`)
 }
 
 // 收藏相关接口
 export const collectApi = {
+  // 收藏文章
   collect: postId => request.post('/collect/', { post_id: postId }),
-  uncollect: id => request.delete(`/collect/${id}/`)
+
+  // 取消收藏
+  uncollect: postId => request.delete(`/collect/${postId}/`),
+
+  // 获取收藏状态
+  getStatus: postId => request.get(`/collect/status/${postId}/`)
 }
 
 export const categoryApi = {

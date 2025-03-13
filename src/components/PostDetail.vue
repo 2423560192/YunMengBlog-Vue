@@ -40,9 +40,14 @@
         </div>
 
         <div class="post-actions">
-          <button class="btn-action" @click="handleLike">
-            <i class="fas" :class="{ 'fa-heart text-danger': isLiked, 'fa-heart': !isLiked }"></i>
-            点赞
+          <button
+            class="btn-action"
+            :class="{ 'liked': isLiked }"
+            @click="handleLike"
+          >
+            <i class="fas fa-heart" :class="{ 'text-danger': isLiked }"></i>
+            {{ isLiked ? '已点赞' : '点赞' }}
+            <span class="count" v-if="post.likes_count">({{ post.likes_count }})</span>
           </button>
           <button class="btn-action" @click="handleCollect">
             <i class="fas" :class="{ 'fa-star text-warning': isCollected, 'fa-star': !isCollected }"></i>
@@ -206,17 +211,28 @@ export default {
         const response = await postApi.getDetail(this.$route.params.id)
         this.post = response.data
 
+        // 如果用户已登录,获取点赞和收藏状态
+        if (this.isLoggedIn) {
+          try {
+            // 获取点赞状态
+            const likeStatus = await likeApi.getStatus(this.postId)
+            this.isLiked = likeStatus.data.is_liked
+            this.likeId = likeStatus.data.like_id
+
+            // 获取收藏状态
+            const collectStatus = await collectApi.getStatus(this.postId)
+            this.isCollected = collectStatus.data.is_bookmarked
+          } catch (error) {
+            console.error('获取状态失败:', error)
+          }
+        }
+
         if (this.post.is_published) {
           this.fetchComments()
         }
       } catch (error) {
         console.error('获取文章详情失败:', error)
-        this.$message({
-          message: '获取文章详情失败',
-          type: 'error',
-          duration: 2000
-        })
-        this.$router.push('/posts')
+        this.$message.error('获取文章详情失败')
       } finally {
         this.loading = false
       }
@@ -312,15 +328,39 @@ export default {
       }
 
       try {
+        // 获取当前点赞状态
+        const likeStatus = await likeApi.getStatus(this.postId)
+        this.isLiked = likeStatus.data.is_liked
+        this.likeId = likeStatus.data.like_id
+
         if (this.isLiked) {
-          await likeApi.unlike(this.likeId)
+          // 如果已点赞，则取消点赞
+          await likeApi.unlike(this.postId)
         } else {
+          // 如果未点赞，则点赞
           const res = await likeApi.like(this.postId)
-          this.likeId = res.id
+          if (res.data && res.data.id) {
+            this.likeId = res.data.id
+          }
         }
-        this.isLiked = !this.isLiked
+
+        // 更新点赞状态
+        const newStatus = await likeApi.getStatus(this.postId)
+        this.isLiked = newStatus.data.is_liked
+        this.likeId = newStatus.data.like_id
+
+        // 更新文章信息
+        const response = await postApi.getDetail(this.postId)
+        this.post = response.data
+
+        // 添加操作提示
+        this.$message({
+          message: this.isLiked ? '点赞成功' : '已取消点赞',
+          type: this.isLiked ? 'success' : 'info'
+        })
       } catch (error) {
-        console.error('操作失败:', error)
+        console.error('点赞操作失败:', error)
+        this.$message.error('操作失败，请稍后重试')
       }
     },
     async handleCollect () {
@@ -331,14 +371,28 @@ export default {
 
       try {
         if (this.isCollected) {
-          await collectApi.uncollect(this.collectId)
+          // 如果已收藏，则取消收藏
+          await collectApi.uncollect(this.postId)
         } else {
-          const res = await collectApi.collect(this.postId)
-          this.collectId = res.id
+          // 如果未收藏，则收藏
+          await collectApi.collect(this.postId)
         }
-        this.isCollected = !this.isCollected
+
+        // 更新收藏状态
+        const collectStatus = await collectApi.getStatus(this.postId)
+        this.isCollected = collectStatus.data.is_bookmarked
+
+        // 更新文章信息
+        const response = await postApi.getDetail(this.postId)
+        this.post = response.data
+
+        this.$message({
+          message: this.isCollected ? '收藏成功' : '已取消收藏',
+          type: this.isCollected ? 'success' : 'info'
+        })
       } catch (error) {
-        console.error('操作失败:', error)
+        console.error('收藏操作失败:', error)
+        this.$message.error('操作失败，请稍后重试')
       }
     },
     async goToPost (postId) {
@@ -485,21 +539,36 @@ export default {
 }
 
 .btn-action {
-  background: none;
-  border: none;
-  color: #666;
-  cursor: pointer;
-  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
   border-radius: 20px;
+  background: white;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .btn-action:hover {
-  background: #f5f5f5;
-  color: #3273dc;
+  background: #f8f9fa;
+  transform: translateY(-2px);
+}
+
+.btn-action.liked {
+  background: #fff5f5;
+  border-color: #ff4757;
+  color: #ff4757;
+}
+
+.btn-action i {
+  font-size: 1.1rem;
+}
+
+.btn-action .count {
+  font-size: 0.9rem;
+  color: #999;
 }
 
 /* 评论区样式美化 */
@@ -742,8 +811,20 @@ export default {
     border-top-color: #4a5568;
   }
 
+  .btn-action {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+
   .btn-action:hover {
     background: #4a5568;
+  }
+
+  .btn-action.liked {
+    background: #742a2a;
+    border-color: #fc8181;
+    color: #fc8181;
   }
 
   .comment-form {

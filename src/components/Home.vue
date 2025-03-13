@@ -207,48 +207,6 @@
       </a>
     </div>
 
-    <!-- 推荐文章区域 -->
-    <div v-if="$route.path === '/'" class="recommended-section">
-      <div class="container">
-        <h3 class="section-title mb-4">推荐阅读</h3>
-        <div class="row g-4">
-          <div v-for="post in recommendedPosts"
-               :key="post.id"
-               class="col-md-6 col-lg-3">
-            <div class="article-card">
-              <img :src="getImageUrl(post.cover, 'cover')"
-                   :alt="post.title"
-                   class="article-thumbnail"
-                   loading="lazy">
-              <div class="article-content">
-                <h4 class="article-title">{{ post.title }}</h4>
-                <div class="post-meta">
-                  <img v-if="post.author"
-                       :src="post.author.avatar"
-                       :alt="post.author.username"
-                       class="author-avatar">
-                  <span class="author-name">{{ post.author ? (post.author.nickname || post.author.username) : '匿名用户' }}</span>
-                </div>
-                <div class="article-actions">
-                  <button class="btn-action" @click="handleLike(post)">
-                    <i class="fas fa-heart"></i> {{ post.likes }}
-                  </button>
-                  <button class="btn-action" @click="handleCollect(post)">
-                    <i class="fas fa-bookmark"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="text-center mt-4">
-          <button class="btn-load-more" @click="loadMoreArticles">
-            加载更多 <i class="fas fa-chevron-down"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- 最新评论部分 -->
     <div class="section-container">
       <div class="container">
