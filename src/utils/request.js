@@ -1,12 +1,14 @@
 import axios from 'axios'
 import { Message } from 'element-ui'
+import { getApiUrl } from './env'
 
 // 添加基础 URL 配置
-const baseURL = process.env.VUE_APP_API_URL || 'http://localhost:8000/api'
+const baseURL = getApiUrl()
+const apiPrefix = '/api'
 
 // 创建 axios 实例
 const request = axios.create({
-  baseURL,
+  baseURL: `${baseURL}${apiPrefix}`,
   timeout: 5000
 })
 
@@ -32,7 +34,8 @@ export const getImageUrl = (url, type = 'avatar') => {
     return url
   }
 
-  return `${baseURL}${url}`
+  // 确保 URL 路径正确
+  return `${baseURL}${url.startsWith('/') ? url : `/${url}`}`
 }
 
 // 添加全局图片错误处理

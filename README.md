@@ -95,19 +95,77 @@ src/
 
 ### 环境变量
 
-在项目根目录创建 `.env` 文件：
+项目使用 Vue CLI 的环境变量系统，支持多环境配置。项目中包含以下环境配置文件：
+
+- `.env` - 基础环境配置，适用于所有环境
+- `.env.development` - 开发环境配置
+- `.env.production` - 生产环境配置
+
+各环境变量说明：
 
 ```
-VUE_APP_API_URL=http://your-api-url
-VUE_APP_TITLE=Your Blog Title
+# 基础环境变量
+VUE_APP_TITLE=云梦博客          # 应用标题
+VUE_APP_VERSION=0.1.0          # 应用版本
+
+# 环境特定变量
+NODE_ENV=development|production # 环境名称
+VUE_APP_API_URL=http://xxx      # API 基础地址（注意：不要包含 /api 后缀）
+VUE_APP_MODE=development|production # 应用模式
+VUE_APP_BASE_URL=/              # 应用部署路径
+```
+
+### API URL 配置注意事项
+
+1. 环境变量 `VUE_APP_API_URL` 中**不要**包含 `/api` 后缀，例如：
+   - 正确：`http://localhost:8000`
+   - 错误：`http://localhost:8000/api`
+
+2. 前端代码中发送请求时应使用 `/api` 作为基础路径，如：
+   ```js
+   axios.get('/api/categories/') // 正确
+   axios.get('/categories/')     // 错误
+   ```
+
+3. 在代码中使用 env 工具类获取环境变量：
+   ```js
+   import { getApiUrl } from '@/utils/env'
+   const baseUrl = getApiUrl() // 返回不包含 /api 的基础 URL
+   ```
+
+### 使用不同环境
+
+```bash
+# 开发环境
+npm run serve:dev
+
+# 生产环境运行
+npm run serve:prod
+
+# 开发环境构建
+npm run build:dev
+
+# 生产环境构建
+npm run build:prod
 ```
 
 ### API 配置
 
-修改 `src/utils/request.js` 中的配置：
+API 地址现在通过环境变量配置，您可以使用环境工具类简化使用：
 
 ```javascript
-const baseURL = process.env.VUE_APP_API_URL || 'http://localhost:8000/api'
+// 引入环境工具
+import { getApiUrl, isDev, isProd } from '@/utils/env'
+
+// 获取 API URL
+const apiUrl = getApiUrl()
+
+// 根据环境执行不同代码
+if (isDev()) {
+  console.log('开发环境运行')
+} else if (isProd()) {
+  console.log('生产环境运行')
+}
 ```
 
 ## 开发指南
@@ -151,3 +209,53 @@ server {
 ## 许可证
 
 本项目基于 MIT 许可证开源 - 查看 [LICENSE](LICENSE) 文件了解更多信息
+
+## 环境隔离实施说明
+
+本项目实现了线上线下环境隔离，主要通过以下方式实现：
+
+### 1. 环境配置文件
+
+- `.env`: 基础环境配置，适用于所有环境
+- `.env.development`: 开发环境配置
+- `.env.production`: 生产环境配置
+
+### 2. 环境工具类
+
+创建了 `src/utils/env.js` 工具类，提供了获取环境变量和判断环境的便捷方法：
+
+```javascript
+// 判断是否为开发环境
+isDev()
+
+// 判断是否为生产环境 
+isProd()
+
+// 获取API地址
+getApiUrl()
+
+// 获取更多环境变量
+getAppMode(), getAppVersion(), getAppTitle()
+```
+
+### 3. 启动与构建命令
+
+- 开发环境启动: `npm run serve:dev`
+- 生产环境构建: `npm run build:prod`
+
+### 4. 测试页面
+
+- 访问 `/env-test` 路径可以查看当前环境配置信息
+
+### 5. API地址配置
+
+API 地址现在统一通过环境变量配置，避免了硬编码：
+
+- 开发环境: `http://localhost:8000/api`
+- 生产环境: `https://api.yunmeng-blog.com/api`
+
+### 6. 注意事项
+
+- 不要在代码中直接使用 `process.env.XXX`，应该使用 `env.js` 工具类提供的方法
+- 敏感信息（如密钥）不要提交到版本控制系统
+- 可以添加 `.env.local` 文件进行本地环境配置（此文件不应提交到版本控制系统）

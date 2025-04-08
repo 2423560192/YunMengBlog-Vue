@@ -8,6 +8,7 @@ import PostDetail from '../components/PostDetail.vue'
 import CategoryPosts from '../components/CategoryPosts.vue'
 import MessageBoard from '../components/MessageBoard.vue'
 import WritePost from '../components/WritePost.vue'
+import EnvTest from '../views/EnvTest.vue'
 
 Vue.use(VueRouter)
 
@@ -52,6 +53,11 @@ const routes = [
     name: 'WritePost',
     component: WritePost,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/env-test',
+    name: 'EnvTest',
+    component: EnvTest
   }
 ]
 

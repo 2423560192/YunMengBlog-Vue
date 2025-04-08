@@ -8,8 +8,8 @@ import { Message, MessageBox } from 'element-ui'
 import 'element-ui/lib/theme-chalk/message.css'
 import 'element-ui/lib/theme-chalk/message-box.css'
 
-// 配置 axios
-axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://localhost:8000'
+// 配置 axios - 修改为使用相对路径或去除 API 后缀
+axios.defaults.baseURL = '/api' // 改为只使用 '/api'，因为环境变量中已经包含了完整的 API 路径
 Vue.prototype.$axios = axios
 
 // 添加请求拦截器
