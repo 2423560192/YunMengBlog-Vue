@@ -105,7 +105,7 @@
 <script>
 import Home from './Home.vue'
 import { postApi } from '../api'
-import { getImageUrl } from '../utils/request'
+import request, { getImageUrl } from '@/utils/request'
 
 export default {
   name: 'HomeContent',
@@ -131,18 +131,18 @@ export default {
     async fetchPosts () {
       this.loading = true
       try {
-        const response = await this.$axios.get('/api/posts/', {
+        const response = await request.get('/posts/', {
           params: { page: this.page, limit: 5 }
         })
 
-        if (response.data && response.data.data) {
+        if (response && response.data) {
           if (this.page === 1) {
-            this.posts = response.data.data
+            this.posts = response.data
           } else {
-            this.posts = [...this.posts, ...response.data.data]
+            this.posts = [...this.posts, ...response.data]
           }
 
-          this.hasMore = response.data.data.length === 5
+          this.hasMore = response.data.length === 5
         }
       } catch (error) {
         console.error('获取文章列表失败:', error)

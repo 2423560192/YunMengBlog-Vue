@@ -43,6 +43,7 @@
 
 <script>
 import Home from './Home.vue'
+import request from '@/utils/request'
 
 export default {
   name: 'CategoryPosts',
@@ -76,7 +77,7 @@ export default {
       this.loading = true
       try {
         // 使用 API 获取分类文章
-        const response = await this.$axios.get('/api/posts/filter/', {
+        const response = await request.get('/posts/filter/', {
           params: { category_name: this.categoryName }
         })
 
@@ -95,7 +96,7 @@ export default {
 
     async fetchPostCount () {
       try {
-        const response = await this.$axios.get('/api/categories/count-posts/', {
+        const response = await request.get('/categories/count-posts/', {
           params: { category_name: this.categoryName }
         })
 
@@ -125,12 +126,15 @@ export default {
     },
     getImageUrl (url, type) {
       if (!url) {
-        return `${this.baseUrl}/api/static/${type === 'avatar' ? 'default-avatar.png' : 'default-cover.jpg'}`
+        // 如果没有提供 URL，返回本地默认图片
+        return type === 'avatar'
+          ? require('@/assets/images/default-avatar.png')
+          : require('@/assets/images/default-cover.jpg')
       }
       if (url.startsWith('http://') || url.startsWith('https://')) {
         return url
       }
-      return `${this.baseUrl}${url}`
+      return `${this.baseUrl}${url.startsWith('/') ? url : `/${url}`}`
     }
   }
 }

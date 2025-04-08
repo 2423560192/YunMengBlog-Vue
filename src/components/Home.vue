@@ -285,7 +285,7 @@
 </template>
 
 <script>
-import { likeApi, collectApi, postApi } from '../api'
+import { likeApi, collectApi, postApi, categoryApi } from '../api'
 import request from '@/utils/request'
 
 export default {
@@ -451,7 +451,7 @@ export default {
 
       try {
         // 这里假设后端有订阅接口
-        await request.post('/api/subscribe', { email: this.subscribeEmail })
+        await request.post('/subscribe', { email: this.subscribeEmail })
         this.$bvToast.toast('订阅成功！', {
           title: '提示',
           variant: 'success',
@@ -508,12 +508,12 @@ export default {
     async fetchRecentComments () {
       try {
         // 先获取最新的几篇文章
-        const posts = await (await request.get('posts/?page=1&limit=3')).data
+        const posts = await (await request.get('/posts/?page=1&limit=3')).data
         console.log('文章', posts)
         if (posts && posts.length > 0) {
           // 获取每篇文章的评论并合并
           const commentsPromises = posts.map(post =>
-            request.get('comments/', {
+            request.get('/comments/', {
               params: {
                 post_id: post.id,
                 post_published: true
@@ -547,22 +547,26 @@ export default {
     },
     getImageUrl (url, type) {
       if (!url) {
-        // 如果没有提供 URL，返回默认图片的 API 地址
-        return `${this.baseUrl}/static/${type === 'avatar' ? 'default-avatar.png' : 'default-cover.jpg'}`
+        // 如果没有提供 URL，返回本地默认图片
+        return type === 'avatar'
+          ? require('@/assets/images/default-avatar.png')
+          : require('@/assets/images/default-cover.jpg')
       }
       // 如果 URL 已经是完整的 URL（以 http 或 https 开头），直接返回
       if (url.startsWith('http://') || url.startsWith('https://')) {
         return url
       }
       // 否则，拼接基础 URL
-      return `${this.baseUrl}${url}`
+      return `${this.baseUrl}${url.startsWith('/') ? url : `/${url}`}`
     },
     async fetchCategories () {
       try {
-        const response = await this.$axios.get('/api/categories/')
-        if (response.data && Array.isArray(response.data.data)) {
+        const response = await categoryApi.getList()
+        console.log('分类响应', response)
+
+        if (response && Array.isArray(response.data)) {
           // 将后端数据映射到我们需要的格式
-          const categories = response.data.data.map(category => ({
+          const categories = response.data.map(category => ({
             name: category.name,
             icon: this.getCategoryIcon(category.name), // 根据分类名称获取图标
             color: this.getCategoryColor(category.name), // 根据分类名称获取颜色
@@ -570,18 +574,24 @@ export default {
           }))
 
           // 获取每个分类的文章数量
-          for (const category of categories) {
-            try {
-              const countResponse = await this.$axios.get('/api/categories/count-posts/', {
-                params: { category_name: category.name }
-              })
-              if (countResponse.data && countResponse.data.data) {
-                category.count = countResponse.data.data.post_count
+          const fetchCategoryCounts = async () => {
+            for (const category of categories) {
+              try {
+                const countResponse = await request.get('/categories/count-posts/', {
+                  params: { category_name: category.name }
+                })
+                if (countResponse && countResponse.data) {
+                  category.count = countResponse.data.post_count
+                }
+                console.log(`分类 ${category.name} 文章数量:`, category.count)
+              } catch (error) {
+                console.error(`获取分类 ${category.name} 的文章数量失败:`, error)
               }
-            } catch (error) {
-              console.error(`获取分类 ${category.name} 的文章数量失败:`, error)
             }
           }
+
+          // 确保函数被调用
+          fetchCategoryCounts()
 
           this.categories = categories
         }

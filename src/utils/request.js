@@ -3,30 +3,37 @@ import { Message } from 'element-ui'
 import { getApiUrl } from './env'
 
 // 添加基础 URL 配置
-const baseURL = getApiUrl()
-const apiPrefix = '/api'
+const baseURL = `${getApiUrl()}/api`
 
 // 创建 axios 实例
 const request = axios.create({
-  baseURL: `${baseURL}${apiPrefix}`,
+  baseURL: baseURL,
   timeout: 5000
 })
 
-// 默认图片配置
+// 默认图片配置 - 使用本地图片路径
 export const defaultImages = {
-  avatar: '/static/assets/images/default-avatar.png',
-  cover: '/static/assets/images/default-cover.jpg'
+  avatar: require('@/assets/images/default-avatar.png'),
+  cover: require('@/assets/images/default-cover.jpg')
 }
 
 // 图片加载错误处理函数
 const handleImageError = (event, type) => {
-  event.target.src = `${baseURL}${defaultImages[type]}`
+  // 使用本地默认图片
+  event.target.src = defaultImages[type]
+
+  // 防止无限循环
+  event.target.onerror = null
+
+  // 添加一个标记，表示这是默认图片
+  event.target.dataset.isDefault = 'true'
 }
 
 // 获取图片 URL 的工具函数
 export const getImageUrl = (url, type = 'avatar') => {
   if (!url) {
-    return `${baseURL}${defaultImages[type]}`
+    // 如果没有图片，返回本地默认图片
+    return defaultImages[type]
   }
 
   // 如果是完整的 URL，直接返回
@@ -34,7 +41,7 @@ export const getImageUrl = (url, type = 'avatar') => {
     return url
   }
 
-  // 确保 URL 路径正确
+  // 确保 URL 路径正确，不使用 API 前缀
   return `${baseURL}${url.startsWith('/') ? url : `/${url}`}`
 }
 
@@ -43,6 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.addEventListener('error', (e) => {
     if (e.target.tagName.toLowerCase() === 'img') {
       const imgElement = e.target
+
+      // 如果已经是默认图片，则不再处理
+      if (imgElement.dataset.isDefault === 'true') {
+        return
+      }
+
       const type = imgElement.dataset.type || 'avatar'
       handleImageError(e, type)
     }

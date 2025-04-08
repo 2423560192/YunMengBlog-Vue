@@ -259,3 +259,35 @@ API 地址现在统一通过环境变量配置，避免了硬编码：
 - 不要在代码中直接使用 `process.env.XXX`，应该使用 `env.js` 工具类提供的方法
 - 敏感信息（如密钥）不要提交到版本控制系统
 - 可以添加 `.env.local` 文件进行本地环境配置（此文件不应提交到版本控制系统）
+
+### 7. 默认图片处理
+
+项目中的默认图片（如用户头像、文章封面）现在使用本地资源，而不是从服务器获取：
+
+- 默认头像：`src/assets/images/default-avatar.png`
+- 默认封面：`src/assets/images/default-cover.jpg`
+
+当图片加载失败时，会自动使用这些本地默认图片，避免向服务器发送不必要的请求。
+
+### 8. API 路径规范
+
+为了解决 API 请求路径问题，现在所有 API 请求都需要显式添加 `/api` 前缀。项目中已经进行了如下调整：
+
+1. 移除了 `request.js` 中自动添加的 API 前缀
+2. 所有 API 接口调用都已更新为显式包含 `/api` 前缀
+3. 避免了重复的 API 路径问题 (如 `/api/api/categories/`)
+
+**正确的 API 请求示例:**
+
+```js
+// 在 api/index.js 中
+export const categoryApi = {
+  getList: () => request.get('/api/categories/')
+}
+
+// 在组件中直接使用
+await this.$axios.get('/api/posts/');
+await request.get('/api/comments/');
+```
+
+**注意:** 确保所有新添加的 API 请求都遵循这一规范，统一使用 `/api` 前缀。
